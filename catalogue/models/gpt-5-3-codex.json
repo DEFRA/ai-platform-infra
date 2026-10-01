@@ -1,0 +1,23 @@
+{
+  "slug": "gpt-5-3-codex",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "gpt-5-codex",
+  "modelName": "gpt-5.3-codex",
+  "version": "5.3",
+  "deploymentName": "gpt-5.3-codex",
+  "skus": [{ "name": "GlobalStandard", "capacity": 10 }],
+  "displayName": "GPT-5.3 Codex",
+  "description": "Agentic, tool-use-oriented model optimised for coding and long-running tasks.",
+  "useCases": ["Code generation", "Agentic workflows", "Long-document analysis"],
+  "tiers": ["research"],
+  "environments": ["sandbox"],
+  "dataZone": "uk",
+  "regions": ["uksouth"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": { "min": 1, "max": 100, "default": 10 },
+  "limitsDefault": { "requestsPerMinute": 60, "tokensPerDay": 100000 },
+  "lifecycle": { "status": "available", "retirementDate": null },
+  "eligibility": { "eligible": true, "reason": null },
+  "links": [{ "text": "Best practice guide", "href": "/help/best-practice" }]
+}

@@ -1,0 +1,23 @@
+{
+  "slug": "gpt-5-nano-2",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "gpt-5",
+  "modelName": "gpt-5-nano",
+  "version": "2025-08-07",
+  "deploymentName": "gpt-5-nano-2",
+  "skus": [{ "name": "GlobalStandard", "capacity": 10 }],
+  "displayName": "GPT-5 nano (capacity 2)",
+  "description": "A second gpt-5-nano deployment, giving the research tier an additional capacity pool for the same model.",
+  "useCases": ["Prototyping", "Simple chat", "Lightweight automation"],
+  "tiers": ["research"],
+  "environments": ["sandbox"],
+  "dataZone": "uk",
+  "regions": ["uksouth"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": { "min": 1, "max": 50, "default": 5 },
+  "limitsDefault": { "requestsPerMinute": 60, "tokensPerDay": 100000 },
+  "lifecycle": { "status": "available", "retirementDate": null },
+  "eligibility": { "eligible": true, "reason": null },
+  "links": [{ "text": "Best practice guide", "href": "/help/best-practice" }]
+}

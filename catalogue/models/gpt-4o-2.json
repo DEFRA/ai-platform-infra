@@ -1,0 +1,23 @@
+{
+  "slug": "gpt-4o-2",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "gpt-4o",
+  "modelName": "gpt-4o",
+  "version": "2024-08-06",
+  "deploymentName": "gpt-4o-2",
+  "skus": [{ "name": "GlobalStandard", "capacity": 10 }],
+  "displayName": "GPT-4o (capacity 2)",
+  "description": "A second gpt-4o deployment, giving the research tier an additional capacity pool for the same model.",
+  "useCases": ["Chat assistants", "Document summarisation", "Image understanding"],
+  "tiers": ["research"],
+  "environments": ["sandbox"],
+  "dataZone": "uk",
+  "regions": ["uksouth"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": { "min": 1, "max": 100, "default": 10 },
+  "limitsDefault": { "requestsPerMinute": 60, "tokensPerDay": 100000 },
+  "lifecycle": { "status": "available", "retirementDate": null },
+  "eligibility": { "eligible": true, "reason": null },
+  "links": [{ "text": "Best practice guide", "href": "/help/best-practice" }]
+}
