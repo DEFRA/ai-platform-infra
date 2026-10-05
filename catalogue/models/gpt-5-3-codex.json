@@ -14,7 +14,7 @@
   "environments": ["sandbox"],
   "dataZone": "uk",
   "regions": ["uksouth"],
-  "apiProfile": "chat-completions",
+  "apiProfile": "responses",
   "capacityPolicy": { "min": 1, "max": 100, "default": 10 },
   "limitsDefault": { "requestsPerMinute": 60, "tokensPerDay": 100000 },
   "lifecycle": { "status": "available", "retirementDate": null },
