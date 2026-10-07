@@ -6,7 +6,7 @@
   "modelName": "gpt-5-nano",
   "version": "2025-08-07",
   "deploymentName": "gpt-5-nano-2",
-  "skus": [{ "name": "GlobalStandard", "capacity": 10 }],
+  "skus": [{ "name": "GlobalStandard", "capacity": 250 }],
   "displayName": "GPT-5 nano (capacity 2)",
   "description": "A second gpt-5-nano deployment, giving the research tier an additional capacity pool for the same model.",
   "useCases": ["Prototyping", "Simple chat", "Lightweight automation"],

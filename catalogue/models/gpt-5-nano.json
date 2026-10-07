@@ -6,7 +6,7 @@
   "modelName": "gpt-5-nano",
   "version": "2025-08-07",
   "deploymentName": "gpt-5-nano",
-  "skus": [{ "name": "GlobalStandard", "capacity": 10 }],
+  "skus": [{ "name": "GlobalStandard", "capacity": 250 }],
   "displayName": "GPT-5 nano",
   "description": "Smallest, fastest member of the GPT-5 family, suited to lightweight and latency-sensitive tasks.",
   "useCases": ["Prototyping", "Simple chat", "Lightweight automation"],
