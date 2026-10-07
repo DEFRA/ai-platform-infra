@@ -2,6 +2,8 @@
   "slug": "gpt-4o-2",
   "provider": "openai",
   "offering": "azure-openai",
+  "cloud": "azure",
+  "adapter": "azure-apim",
   "family": "gpt-4o",
   "modelName": "gpt-4o",
   "version": "2024-11-20",
