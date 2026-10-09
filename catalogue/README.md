@@ -12,6 +12,5 @@ repeat `cloud` or `adapter`; the backend derives them from the offering.
 No `bedrock` offering ships yet. The schema permits one, but how API Management authenticates to
 Amazon Bedrock without long-lived AWS keys is unresolved (design pack constraint 10).
 
-Release `v0.2.0` adopts this shape. The backend reads it and the earlier flat shape
-(`cloud`/`adapter` on each offering), so move each environment's `CATALOGUE_REF` only after a
-backend that reads both is deployed there.
+Release `v0.2.0` adopts this shape. Backends before it read only the earlier flat shape, so move an
+environment's `CATALOGUE_REF` to `v0.2.0` only once the new backend is deployed there.
