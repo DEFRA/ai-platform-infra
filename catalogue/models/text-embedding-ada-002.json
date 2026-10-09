@@ -2,8 +2,6 @@
   "slug": "text-embedding-ada-002",
   "provider": "openai",
   "offering": "azure-openai",
-  "cloud": "azure",
-  "adapter": "azure-apim",
   "family": "text-embedding-ada",
   "modelName": "text-embedding-ada-002",
   "version": "2",

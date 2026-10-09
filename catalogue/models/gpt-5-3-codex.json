@@ -2,8 +2,6 @@
   "slug": "gpt-5-3-codex",
   "provider": "openai",
   "offering": "azure-openai",
-  "cloud": "azure",
-  "adapter": "azure-apim",
   "family": "gpt-5-codex",
   "modelName": "gpt-5.3-codex",
   "version": "2026-02-24",
