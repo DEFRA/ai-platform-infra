@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "model.schema.json",
+  "type": "object",
+  "required": ["slug", "provider", "offering"],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "provider": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "offering": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }
+  },
+  "not": {
+    "anyOf": [{ "required": ["cloud"] }, { "required": ["adapter"] }]
+  }
+}

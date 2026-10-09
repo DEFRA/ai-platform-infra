@@ -2,8 +2,6 @@
   "slug": "gpt-5-nano-2",
   "provider": "openai",
   "offering": "azure-openai",
-  "cloud": "azure",
-  "adapter": "azure-apim",
   "family": "gpt-5",
   "modelName": "gpt-5-nano",
   "version": "2025-08-07",
