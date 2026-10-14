@@ -42,6 +42,17 @@ describe('checkAuthor', () => {
     expect(decision.allowed).toBe(false)
   })
 
+  test('refuses break-glass whose second approval is an App', () => {
+    const decision = checkAuthor({
+      author: 'engineer',
+      entry,
+      labels: ['break-glass'],
+      approvers: ['admin-one', 'some-app[bot]']
+    })
+
+    expect(decision.allowed).toBe(false)
+  })
+
   test('allows break-glass with two approvals from other people', () => {
     expect(
       checkAuthor({

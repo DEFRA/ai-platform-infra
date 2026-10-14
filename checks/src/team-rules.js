@@ -60,11 +60,13 @@ function checkDeployments(path, document, previous, context) {
       problems.push(problem(path, `${label} is not offered in ${environment}`))
     }
 
-    const isNew = !previousSlugs.has(deployment.slug)
-    if (isNew && !GRANTABLE.has(model.lifecycle.status)) {
-      problems.push(
-        problem(path, `${label} is ${model.lifecycle.status}: no new grants`)
-      )
+    // A deprecated model keeps the grants it has; any other status that is
+    // not grantable refuses every deployment of it, old or new.
+    const status = model.lifecycle.status
+    const kept = status === 'deprecated' && previousSlugs.has(deployment.slug)
+    if (!GRANTABLE.has(status) && !kept) {
+      const rule = status === 'deprecated' ? 'no new grants' : 'no grants'
+      problems.push(problem(path, `${label} is ${status}: ${rule}`))
     }
 
     const sku = skusForTier(model, 'team').find(
@@ -231,6 +233,8 @@ function checkOauth(path, document, entry) {
  * @param {Map<string, object>} input.models - Catalogue models by slug.
  * @param {Record<string, Function>} input.validators - Schema validators.
  * @param {string} [input.operationId] - Operation the change belongs to.
+ * @param {boolean} [input.onMain] - The file is already on main, so its
+ *   deployments are grants it holds rather than new ones.
  * @returns {Array<{file: string, message: string}>} Problems.
  */
 function checkTeamFile(input) {
@@ -288,7 +292,14 @@ function checkTeamFile(input) {
     }
   }
 
-  problems.push(...checkDeployments(path, document, previous, input))
+  problems.push(
+    ...checkDeployments(
+      path,
+      document,
+      input.onMain ? document : previous,
+      input
+    )
+  )
   problems.push(...checkGateway(path, document))
   problems.push(...checkOauth(path, document, entry))
 

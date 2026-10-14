@@ -75,9 +75,19 @@ function checkModel(model, name, offerings, validators) {
     problems.push(`${name}: provider is blocked by D03`)
   }
 
-  const policy = model.capacityPolicy
-  if (policy.min > policy.default || policy.default > policy.max) {
-    problems.push(`${name}: capacityPolicy needs min <= default <= max`)
+  const overrides = Object.keys(model.capacityPolicy.environments ?? {})
+  const policies = [
+    ['capacityPolicy', model.capacityPolicy],
+    ...overrides.map((environment) => [
+      `capacityPolicy for ${environment}`,
+      capacityPolicyFor(model, environment)
+    ])
+  ]
+
+  for (const [label, policy] of policies) {
+    if (policy.min > policy.default || policy.default > policy.max) {
+      problems.push(`${name}: ${label} needs min <= default <= max`)
+    }
   }
 
   const teamSkus = skusForTier(model, 'team')

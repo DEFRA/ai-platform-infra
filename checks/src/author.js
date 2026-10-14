@@ -28,7 +28,9 @@ function checkAuthor({ author, entry, labels = [], approvers = [] }) {
     }
   }
 
-  const others = new Set(approvers.filter((login) => login !== author))
+  const others = new Set(
+    approvers.filter((login) => login !== author && !login.endsWith(BOT_SUFFIX))
+  )
 
   if (labels.includes('break-glass') && others.size >= BREAK_GLASS_APPROVALS) {
     return { allowed: true, writer: false, reason: 'break-glass approved' }

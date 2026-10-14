@@ -1,30 +1,24 @@
 # ai-platform-infra
 
-Infrastructure code for the Defra AI Platform: Terraform root modules and modules, the model catalogue,
-JSON Schemas for the GitOps files, the offline checks, and the bootstrap. Public code, private
-configuration: this repository holds no environment values; real values live in the internal
-`ai-platform-environments` and in GitHub Environment variables.
+Infrastructure code for the Defra AI Platform: the model catalogue, JSON Schemas for the GitOps files and
+the offline checks; the Terraform roots and modules follow. Public code, private configuration: this
+repository holds no environment values; real values live in the internal `ai-platform-environments` and
+in GitHub Environment variables.
 
 Design and plan: `ai-platform-discovery-docs` (IaC baseline plan, designs B, C and D).
 
-| Path                      | What                                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------------------ |
-| [`platform/`](platform)   | Root module for the platform state of one environment (Phase 1: the public minimal platform)           |
-| [`tenants/`](tenants)     | Root module for the tenants state: one `team` module per team file                                     |
-| [`bootstrap/`](bootstrap) | One-time per subscription: state account, deploy identity federation, missing roles                    |
-| [`names/`](names)         | Provider-free root that prints every name for an environment                                           |
-| [`modules/`](modules)     | `naming` and the platform and team modules ([guide](docs/modules.md))                                  |
-| [`schemas/`](schemas)     | `team`, `pin`, `registry` and `environment` JSON Schemas                                               |
-| [`checks/`](checks)       | `aip-checks`: validate, plan-guard, run-report (Node.js 24)                                            |
-| [`catalogue/`](catalogue) | Model providers and models                                                                             |
-| [`examples/`](examples)   | Placeholder files laid out by repository; test fixtures for the checks and the Portal API              |
-| [`docs/`](docs)           | [GitOps contract](docs/gitops-contract.md), [bootstrap](docs/bootstrap.md), [modules](docs/modules.md) |
+| Path                      | What                                                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| [`schemas/`](schemas)     | `team`, `pin`, `registry` and `environment` JSON Schemas                                  |
+| [`checks/`](checks)       | `aip-checks`: validate, plan-guard, run-report (Node.js 24)                               |
+| [`catalogue/`](catalogue) | Model providers and models                                                                |
+| [`examples/`](examples)   | Placeholder files laid out by repository; test fixtures for the checks and the Portal API |
+| [`docs/`](docs)           | [GitOps contract](docs/gitops-contract.md)                                                |
 
 ## Versions
 
-Terraform `1.16.5` (`.terraform-version`), `azurerm` `5.9.0`, `azapi` `2.13.0` and `azuread` `3.10.0`, pinned
-exactly in each root with committed lock files. `compat.json` states the oldest `ai-platform-workflows`
-release this release works with.
+Terraform `1.16.5` (`.terraform-version`). `compat.json` states the oldest `ai-platform-workflows` release
+this release works with.
 
 ## Releases
 

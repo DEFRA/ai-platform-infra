@@ -131,4 +131,32 @@ describe('buildRunReport', () => {
       repository.destroy()
     }
   })
+
+  test('treats a failure with no parsed error as unattributed', () => {
+    const repository = createRepository()
+
+    try {
+      const head = repository.commit('chore: initialise')
+      const report = buildRunReport({
+        repoDir: repository.dir,
+        base: null,
+        head,
+        environment: 'infradev',
+        state: 'tenants',
+        plan: null,
+        applyLog: '',
+        outputs: null,
+        outcome: 'failure',
+        release: 'v0.5.0',
+        run: { repository: 'DEFRA/ai-platform-tenants', id: '1', attempt: '1' }
+      })
+
+      expect(report).toMatchObject({
+        failingTeams: [],
+        unattributedFailure: true
+      })
+    } finally {
+      repository.destroy()
+    }
+  })
 })

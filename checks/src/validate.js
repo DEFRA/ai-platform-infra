@@ -108,6 +108,7 @@ function checkWholeEnvironment(repoDir, ref, environment, context) {
       path,
       text,
       previousText: null,
+      onMain: true,
       entry,
       params,
       models: context.models,

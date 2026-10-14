@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 
+import { errorAnnotation } from './annotations.js'
 import { canonicalJson } from './canonical-json.js'
 import { guardPlan, tenantsRemovals } from './plan-guard.js'
 import { buildRunReport } from './run-report.js'
@@ -100,7 +101,7 @@ function report(problems, io) {
 
   for (const { file, message } of problems) {
     io.stdout.write(
-      inActions ? `::error file=${file}::${message}\n` : `${file}: ${message}\n`
+      inActions ? errorAnnotation(file, message) : `${file}: ${message}\n`
     )
   }
 

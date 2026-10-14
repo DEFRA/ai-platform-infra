@@ -75,6 +75,21 @@ describe('checkCatalogue', () => {
     ).toContain('gpt-5-nano.json: infradev max exceeds the environment quota')
   })
 
+  test('refuses an environment override that puts the default out of range', () => {
+    const capacityPolicy = {
+      min: 1,
+      max: 50,
+      default: 5,
+      environments: { infradev: { max: 3, quota: 10 } }
+    }
+
+    expect(
+      checkCatalogue(catalogueWith({ capacityPolicy }), validators)
+    ).toContain(
+      'gpt-5-nano.json: capacityPolicy for infradev needs min <= default <= max'
+    )
+  })
+
   test('refuses a model whose offering does not exist', () => {
     expect(
       checkCatalogue(

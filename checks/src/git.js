@@ -114,11 +114,11 @@ function commitsWithTrailers(cwd, base, head, path) {
     '%(trailers:key=Traceparent,valueonly,separator=%x2C)'
   ].join(FIELD)
   const range = base ? `${base}..${head}` : head
+  // Unbounded on purpose: the run report must list every operation since the
+  // last apply, and the range already bounds the walk.
   const output = git(cwd, [
     'log',
     `--format=${format}${RECORD}`,
-    '-n',
-    '200',
     range,
     '--',
     path

@@ -135,8 +135,11 @@ function buildRunReport(input) {
     operations: commitsWithTrailers(repoDir, base, head, path),
     changes: summariseChanges(plan),
     failingTeams,
+    // A failure with no parsed error, or one naming no team, is not
+    // attributable to a team.
     unattributedFailure:
-      outcome !== 'success' && failures.some((failure) => !failure.team),
+      outcome !== 'success' &&
+      (failures.length === 0 || failures.some((failure) => !failure.team)),
     failures,
     outputs: withoutSensitive(outputs),
     generatedAt: new Date().toISOString()

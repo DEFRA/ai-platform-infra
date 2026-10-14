@@ -74,6 +74,40 @@ describe('checkTeamFile', () => {
     expect(check(big)).toEqual(['team file must be under 60 KB'])
   })
 
+  describe('model lifecycle', () => {
+    function withStatus(status) {
+      const model = models.get('gpt-5-nano')
+
+      return new Map(models).set('gpt-5-nano', {
+        ...model,
+        lifecycle: { ...model.lifecycle, status }
+      })
+    }
+
+    const held = { previousText: serialise(keyTeam({ revision: 0 })) }
+
+    test('refuses a new grant of a deprecated model', () => {
+      expect(check(keyTeam(), { models: withStatus('deprecated') })).toContain(
+        'deployment gpt-5-nano is deprecated: no new grants'
+      )
+    })
+
+    test.each([
+      ['a change that keeps it', held],
+      ['the whole environment on main', { onMain: true }]
+    ])('keeps a deprecated grant through %s', (_, options) => {
+      expect(
+        check(keyTeam(), { models: withStatus('deprecated'), ...options })
+      ).toEqual([])
+    })
+
+    test('refuses a retired model even where the team held it', () => {
+      expect(
+        check(keyTeam(), { models: withStatus('retired'), onMain: true })
+      ).toContain('deployment gpt-5-nano is retired: no grants')
+    })
+  })
+
   test('refuses text that is not canonical', () => {
     const document = keyTeam()
 
