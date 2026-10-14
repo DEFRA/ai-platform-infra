@@ -1,0 +1,5 @@
+# Machine-written files use the canonical serialisation, not Prettier's.
+examples/
+checks/
+CHANGELOG.md
+.terraform/

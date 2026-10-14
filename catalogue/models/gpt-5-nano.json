@@ -6,16 +6,31 @@
   "modelName": "gpt-5-nano",
   "version": "2025-08-07",
   "deploymentName": "gpt-5-nano",
-  "skus": [{ "name": "GlobalStandard", "capacity": 250 }],
+  "skus": [
+    { "name": "GlobalStandard", "capacity": 250, "tiers": ["research"] },
+    {
+      "name": "DataZoneStandard",
+      "tiers": ["team"],
+      "regions": ["swedencentral"],
+      "dataZone": "eu"
+    }
+  ],
   "displayName": "GPT-5 nano",
   "description": "Smallest, fastest member of the GPT-5 family, suited to lightweight and latency-sensitive tasks.",
   "useCases": ["Prototyping", "Simple chat", "Lightweight automation"],
-  "tiers": ["research"],
-  "environments": ["sandbox"],
+  "tiers": ["research", "team"],
+  "environments": ["sandbox", "infradev"],
   "dataZone": "uk",
-  "regions": ["uksouth"],
+  "regions": ["uksouth", "swedencentral"],
   "apiProfile": "chat-completions",
-  "capacityPolicy": { "min": 1, "max": 50, "default": 5 },
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5,
+    "environments": {
+      "infradev": { "min": 1, "max": 5, "default": 1, "quota": 10 }
+    }
+  },
   "limitsDefault": { "requestsPerMinute": 60, "tokensPerDay": 100000 },
   "lifecycle": { "status": "available", "retirementDate": null },
   "eligibility": { "eligible": true, "reason": null },

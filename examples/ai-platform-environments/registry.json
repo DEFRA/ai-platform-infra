@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schemas/registry.schema.json",
+  "environments": [
+    {
+      "autoPin": true,
+      "cdp": {
+        "audience": "api://AzureADTokenExchange",
+        "awsAccount": "000000000000",
+        "environment": "dev",
+        "issuer": "https://00000000-0000-0000-0000-000000000000.tokens.sts.global.api.aws"
+      },
+      "class": "platform-test",
+      "deployIdentity": "id-aip-deploy-infradev",
+      "entra": {
+        "enabled": true,
+        "tenantId": "00000000-0000-0000-0000-000000000000"
+      },
+      "name": "infradev",
+      "refs": [
+        "sha",
+        "tag"
+      ],
+      "resetNightly": true,
+      "runner": {
+        "labels": [
+          "ubuntu-26.04"
+        ]
+      },
+      "state": {
+        "location": "uksouth"
+      },
+      "subscription": "SND1",
+      "writers": [
+        "ai-platform-orchestrator"
+      ]
+    }
+  ],
+  "schemaVersion": 1
+}

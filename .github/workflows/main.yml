@@ -1,0 +1,19 @@
+name: Main
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    uses: DEFRA/ai-platform-workflows/.github/workflows/release.yml@v1
+    permissions:
+      contents: read
+    with:
+      kind: infra

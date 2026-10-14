@@ -1,0 +1,14 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  infra-checks:
+    uses: DEFRA/ai-platform-workflows/.github/workflows/infra-checks.yml@v1
+    permissions:
+      contents: read
+      security-events: write

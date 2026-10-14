@@ -9,7 +9,11 @@
   "skus": [{ "name": "GlobalStandard", "capacity": 14875 }],
   "displayName": "GPT-4o (capacity 2)",
   "description": "A second gpt-4o deployment, giving the research tier an additional capacity pool for the same model.",
-  "useCases": ["Chat assistants", "Document summarisation", "Image understanding"],
+  "useCases": [
+    "Chat assistants",
+    "Document summarisation",
+    "Image understanding"
+  ],
   "tiers": ["research"],
   "environments": ["sandbox"],
   "dataZone": "uk",

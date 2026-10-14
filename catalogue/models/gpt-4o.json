@@ -9,7 +9,11 @@
   "skus": [{ "name": "GlobalStandard", "capacity": 250 }],
   "displayName": "GPT-4o",
   "description": "Multimodal OpenAI model balancing speed, cost and capability across text and vision tasks.",
-  "useCases": ["Chat assistants", "Document summarisation", "Image understanding"],
+  "useCases": [
+    "Chat assistants",
+    "Document summarisation",
+    "Image understanding"
+  ],
   "tiers": ["research"],
   "environments": ["sandbox"],
   "dataZone": "uk",

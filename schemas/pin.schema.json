@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pin.schema.json",
+  "title": "AI Platform platform pin",
+  "description": "environments/{env}/platform.json in ai-platform-deployments: the ai-platform-infra release an environment runs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "environment",
+    "release",
+    "sha",
+    "previousRelease",
+    "requestedBy",
+    "operationId",
+    "requestedAt"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "environment": { "type": "string", "pattern": "^[a-z][a-z0-9]{1,15}$" },
+    "release": {
+      "description": "A release tag vX.Y.Z, or the commit SHA itself where the registry entry allows sha refs.",
+      "type": "string",
+      "pattern": "^(v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)|[0-9a-f]{40})$"
+    },
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "previousRelease": {
+      "description": "The release this pin replaces; null for the first pin of an environment.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "string",
+          "pattern": "^(v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)|[0-9a-f]{40})$"
+        }
+      ]
+    },
+    "requestedBy": {
+      "description": "An opaque identifier: an Entra object ID, or release-please for automatic pins.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "operationId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{7,63}$"
+    },
+    "requestedAt": { "type": "string", "format": "date-time" }
+  }
+}
