@@ -82,9 +82,14 @@ variables {
       team          = { slug = "alpha", serviceCode = "ZZZ" }
       deployments   = [{ slug = "gpt-5-nano", sku = "DataZoneStandard", capacity = 1, status = "active" }]
       gateway = {
-        credentialType     = "subscription-key"
+        credentialType     = "oauth"
         allowedDeployments = ["gpt-5-nano"]
         limits             = { tokensPerMinute = 1000, requestsPerMinute = 60 }
+      }
+      oauth = {
+        federations     = []
+        externalClients = []
+        secretsAllowed  = true
       }
       operationId = "000000000000000000000001"
       updatedBy   = "entra:00000000-0000-0000-0000-000000000001"
@@ -118,7 +123,7 @@ variables {
   }
 }
 
-run "applies_a_key_team_and_an_oauth_team" {
+run "applies_a_team_with_client_secrets_and_a_federated_team" {
   command = apply
 
   assert {
@@ -137,13 +142,13 @@ run "applies_a_key_team_and_an_oauth_team" {
   }
 
   assert {
-    condition     = output.teams.alpha.api.subscription_required && !output.teams.beta.api.subscription_required
-    error_message = "key teams require a subscription; OAuth teams require a token"
+    condition     = output.teams.alpha.registration != null && output.teams.beta.registration != null
+    error_message = "every team gets its registration: the team tier is OAuth only"
   }
 
   assert {
-    condition     = output.teams.alpha.registration == null && output.teams.beta.registration != null
-    error_message = "only OAuth teams get a registration"
+    condition     = length(output.teams.alpha.registration.federations) == 0
+    error_message = "a team that uses client secrets has no federated credential"
   }
 
   assert {
@@ -207,6 +212,20 @@ run "refuses_a_cdp_federation_that_names_its_own_subject" {
             subject = "arn:aws:iam::111111111111:role/beta-api"
           }]
         })
+      })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_a_subscription_key_team" {
+  command = plan
+
+  variables {
+    teams = {
+      alpha = merge(var.teams.alpha, {
+        gateway = merge(var.teams.alpha.gateway, { credentialType = "subscription-key" })
       })
     }
   }

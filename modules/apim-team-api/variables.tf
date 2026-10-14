@@ -14,15 +14,6 @@ variable "api_management" {
   })
 }
 
-variable "credential_type" {
-  type = string
-
-  validation {
-    condition     = contains(["oauth", "subscription-key"], var.credential_type)
-    error_message = "credential_type must be oauth or subscription-key."
-  }
-}
-
 variable "models" {
   description = "Granted models: catalogue slug, derived deployment name, gateway backend URL and apiProfile."
   type = list(object({
@@ -41,7 +32,7 @@ variable "limits" {
 }
 
 variable "client_ids" {
-  description = "OAuth client list: the team's registration and external registrations. Empty for key teams."
+  description = "OAuth client list: the team's registration and external registrations."
   type        = list(string)
   default     = []
 

@@ -4,10 +4,10 @@ variables {
   team_slug          = "alpha"
   api_name           = "alpha"
   api_management     = { name = "apim-aip-infradev", resource_group_name = "SNDAIPINFRGP1401" }
-  credential_type    = "subscription-key"
   authorise_fragment = "aip-authorise"
   named_values       = { clients = "aip-alpha-clients", access_window = "aip-alpha-access" }
   limits             = { tokens_per_minute = 1000, requests_per_minute = 60 }
+  client_ids         = ["00000000-0000-0000-0000-000000000011"]
   models = [{
     slug            = "gpt-5-nano"
     deployment_name = "alpha-gpt-5-nano"
@@ -16,12 +16,32 @@ variables {
   }]
 }
 
-run "key_team_policy" {
+run "team_policy" {
   command = plan
 
   assert {
-    condition     = azurerm_api_management_api.this.subscription_required
-    error_message = "a key team's API requires a subscription"
+    condition     = !azurerm_api_management_api.this.subscription_required
+    error_message = "a team API takes a token, never a subscription key"
+  }
+
+  assert {
+    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<include-fragment fragment-id=\"aip-authorise\" />")
+    error_message = "every team API runs the shared aip-authorise fragment"
+  }
+
+  assert {
+    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "value=\"{{aip-alpha-clients}}\"")
+    error_message = "the fragment reads the team's own client list"
+  }
+
+  assert {
+    condition     = azurerm_api_management_named_value.clients.value == "00000000-0000-0000-0000-000000000011"
+    error_message = "the client list holds the team registration"
+  }
+
+  assert {
+    condition     = azurerm_api_management_named_value.access_window.value == "none"
+    error_message = "access windows start empty; the Portal API activates them"
   }
 
   assert {
@@ -35,18 +55,8 @@ run "key_team_policy" {
   }
 
   assert {
-    condition     = !strcontains(azurerm_api_management_api_policy.this.xml_content, "include-fragment")
-    error_message = "key teams do not run the OAuth fragment"
-  }
-
-  assert {
     condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "tokens-per-minute=\"1000\"")
     error_message = "the team's token limit is enforced"
-  }
-
-  assert {
-    condition     = length(azurerm_api_management_named_value.clients) == 0
-    error_message = "key teams have no client list"
   }
 
   assert {
@@ -55,46 +65,11 @@ run "key_team_policy" {
   }
 }
 
-run "oauth_team_policy" {
-  command = plan
-
-  variables {
-    credential_type = "oauth"
-    client_ids      = ["00000000-0000-0000-0000-000000000011"]
-  }
-
-  assert {
-    condition     = !azurerm_api_management_api.this.subscription_required
-    error_message = "an OAuth team's API takes a token, not a key"
-  }
-
-  assert {
-    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<include-fragment fragment-id=\"aip-authorise\" />")
-    error_message = "OAuth teams run the shared aip-authorise fragment"
-  }
-
-  assert {
-    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "value=\"{{aip-alpha-clients}}\"")
-    error_message = "the fragment reads the team's own client list"
-  }
-
-  assert {
-    condition     = azurerm_api_management_named_value.clients[0].value == "00000000-0000-0000-0000-000000000011"
-    error_message = "the client list holds the team registration"
-  }
-
-  assert {
-    condition     = azurerm_api_management_named_value.access_window[0].value == "none"
-    error_message = "access windows start empty; the Portal API activates them"
-  }
-}
-
 run "refuses_more_than_forty_clients" {
   command = plan
 
   variables {
-    credential_type = "oauth"
-    client_ids      = [for i in range(41) : format("00000000-0000-0000-0000-%012d", i)]
+    client_ids = [for i in range(41) : format("00000000-0000-0000-0000-%012d", i)]
   }
 
   expect_failures = [var.client_ids]

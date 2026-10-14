@@ -70,7 +70,7 @@ variable "teams" {
         requestsPerMinute = number
       })
     })
-    oauth = optional(object({
+    oauth = object({
       federations = list(object({
         name    = string
         host    = string
@@ -89,7 +89,7 @@ variable "teams" {
         reason     = string
         reviewDate = string
       }))
-    }))
+    })
     operationId = string
     updatedBy   = string
     updatedAt   = string
@@ -111,16 +111,13 @@ variable "teams" {
   }
 
   validation {
-    condition = alltrue([
-      for team in var.teams : contains(["oauth", "subscription-key"], team.gateway.credentialType)
-      && (team.gateway.credentialType == "oauth") == (team.oauth != null)
-    ])
-    error_message = "oauth is present exactly when the credential type is oauth."
+    condition     = alltrue([for team in var.teams : team.gateway.credentialType == "oauth"])
+    error_message = "The team tier is OAuth only; subscription keys are the Research tier's."
   }
 
   validation {
-    condition     = var.entra_enabled || alltrue([for team in var.teams : team.oauth == null])
-    error_message = "OAuth teams need Entra enabled for the environment."
+    condition     = var.entra_enabled || length(var.teams) == 0
+    error_message = "Teams need Entra enabled for the environment: every team is an OAuth team."
   }
 
   validation {
@@ -141,9 +138,7 @@ variable "teams" {
 
   validation {
     condition = alltrue([
-      for team in var.teams : team.oauth == null ? true : (
-        length(team.oauth.federations) <= 20 && length(team.oauth.externalClients) <= 39
-      )
+      for team in var.teams : length(team.oauth.federations) <= 20 && length(team.oauth.externalClients) <= 39
     ])
     error_message = "At most 20 federations and 40 clients per team."
   }
@@ -151,7 +146,7 @@ variable "teams" {
   validation {
     condition = alltrue(flatten([
       for team in var.teams : [
-        for federation in try(team.oauth.federations, []) : federation.host == "cdp"
+        for federation in team.oauth.federations : federation.host == "cdp"
         ? federation.service != null && federation.issuer == null && federation.subject == null
         : federation.host == "azure" && federation.service == null && federation.issuer != null && federation.subject != null
       ]

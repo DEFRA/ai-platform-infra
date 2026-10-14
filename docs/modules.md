@@ -11,18 +11,22 @@ a parameters change only.
 
 | Root        | State               | Reads                                                                                                      |
 | ----------- | ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `names`     | None (local)        | `config_files`: the layered parameters below                                                               |
-| `bootstrap` | `bootstrap.tfstate` | `config_files` (through `names`), plus the deploy identity's inputs                                        |
-| `platform`  | `platform.tfstate`  | `-var-file` global, then the environment's file; `release`, `entra_enabled`                                |
+| `names`     | None (local)        | `params_file`: the merged parameters below                                                                 |
+| `bootstrap` | `bootstrap.tfstate` | `params_file` (through `names`), plus the deploy identity's inputs                                         |
+| `platform`  | `platform.tfstate`  | `-var-file` the merged parameters; `release`, `entra_enabled`                                              |
 | `tenants`   | `tenants.tfstate`   | The platform state's outputs, the team files bundled by `aip-checks`, and the registry entry's `cdp` trust |
 
-Parameters are layered in `ai-platform-environments`: `global.tfvars.json` holds what every environment
-shares (location, service code, API Management publisher, default Foundry regions) and
-`environments/{env}/platform.tfvars.json` holds the environment's own. Terraform reads them in that order
-with `-var-file`, so an environment overrides a whole top-level key; `aip-checks` validates the merged
-result against [`environment.schema.json`](../schemas/environment.schema.json). No value is interpolated:
-names come from the codes through `naming`. Before the gate before DEV, `existing_resource_group` may name
-a CCoE resource group made in advance; the platform and its state then go into it.
+Parameters live in `ai-platform-environments`: `global.tfvars.json` holds what every environment
+shares and `environments/{env}/platform.tfvars.json` the environment's own. Codes every cloud shares sit
+at the top level (`environment`, `service_code`, `naming`); what is specific to Azure sits under
+`azure` (location, network, API Management with its publisher, Foundry regions, Key Vault, Log
+Analytics, Application Insights, identities), and another cloud gets its own key beside it, read by its
+own root. `aip-checks params` deep-merges the two files, so an environment sets `azure.apim.sku` without
+restating the rest of `azure`, validates the result against
+[`environment.schema.json`](../schemas/environment.schema.json) and writes the one file Terraform
+reads. No value is interpolated: names come from the codes through `naming`. Before the gate before
+DEV, `azure.existing_resource_group` may name a CCoE resource group made in advance; the platform and its
+state then go into it.
 
 Diagnostic settings for every platform resource, and the subscription activity log, are in one place:
 [`platform/diagnostics.tf`](../platform/diagnostics.tf).
@@ -68,7 +72,8 @@ Those use design D's logical labels (`apim-aip-infradev`, `aif-aip-infradev`, `a
 
 ## Gateway policy
 
-Team APIs follow design E `#enforcement`. OAuth teams run the shared `aip-authorise` fragment: token
+Team APIs follow design E `#enforcement`. The team tier is OAuth only, so every team API takes a token,
+never a subscription key, and runs the shared `aip-authorise` fragment: token
 (401), client list and deny list (403 `client-not-granted`), access window (403 `grant-suspended` or
 `grant-expired`). Every team then gets the model allow-list (403 `model-not-granted`), request and token
 limits, the token metric, and a call to Foundry as the gateway's identity with the caller's credentials

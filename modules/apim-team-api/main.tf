@@ -1,5 +1,4 @@
 locals {
-  oauth    = var.credential_type == "oauth"
   profiles = toset([for model in var.models : model.api_profile])
 
   operations = merge(
@@ -18,14 +17,15 @@ locals {
 }
 
 resource "azurerm_api_management_api" "this" {
-  name                  = var.api_name
-  api_management_name   = var.api_management.name
-  resource_group_name   = var.api_management.resource_group_name
-  revision              = "1"
-  display_name          = "AI Platform team ${var.team_slug}"
-  path                  = var.api_name
-  protocols             = ["https"]
-  subscription_required = !local.oauth
+  name                = var.api_name
+  api_management_name = var.api_management.name
+  resource_group_name = var.api_management.resource_group_name
+  revision            = "1"
+  display_name        = "AI Platform team ${var.team_slug}"
+  path                = var.api_name
+  protocols           = ["https"]
+  # The team tier is OAuth only: a validated token, never a subscription key.
+  subscription_required = false
 }
 
 resource "azurerm_api_management_api_operation" "this" {
@@ -51,8 +51,6 @@ resource "azurerm_api_management_api_operation" "this" {
 }
 
 resource "azurerm_api_management_named_value" "clients" {
-  count = local.oauth ? 1 : 0
-
   name                = var.named_values.clients
   display_name        = var.named_values.clients
   api_management_name = var.api_management.name
@@ -63,8 +61,6 @@ resource "azurerm_api_management_named_value" "clients" {
 # Access windows are the Portal API's: Terraform creates the value empty and
 # never changes it (design E #enforcement).
 resource "azurerm_api_management_named_value" "access_window" {
-  count = local.oauth ? 1 : 0
-
   name                = var.named_values.access_window
   display_name        = var.named_values.access_window
   api_management_name = var.api_management.name
@@ -83,8 +79,6 @@ resource "azurerm_api_management_api_policy" "this" {
 
   xml_content = templatefile("${path.module}/policies/team-api.xml", {
     team                = var.team_slug
-    oauth               = local.oauth
-    credential_label    = local.oauth ? "oauth" : "key"
     clients_named_value = var.named_values.clients
     access_named_value  = var.named_values.access_window
     authorise_fragment  = var.authorise_fragment

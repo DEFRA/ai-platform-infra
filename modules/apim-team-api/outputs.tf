@@ -10,15 +10,11 @@ output "path" {
   value = azurerm_api_management_api.this.path
 }
 
-output "subscription_required" {
-  value = azurerm_api_management_api.this.subscription_required
-}
-
 output "named_values" {
-  value = local.oauth ? {
-    clients       = azurerm_api_management_named_value.clients[0].name
-    access_window = azurerm_api_management_named_value.access_window[0].name
-  } : null
+  value = {
+    clients       = azurerm_api_management_named_value.clients.name
+    access_window = azurerm_api_management_named_value.access_window.name
+  }
 }
 
 output "policy_xml" {

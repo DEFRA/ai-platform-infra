@@ -1,6 +1,5 @@
 locals {
-  slug  = var.team.team.slug
-  oauth = var.team.gateway.credentialType == "oauth"
+  slug = var.team.team.slug
 
   # Catalogue providers whose models Foundry deploys, and the model format
   # Foundry expects for each.
@@ -40,7 +39,7 @@ locals {
 
   # A CDP federation names only its service; the environment's registry
   # entry supplies the rest, so a team file is the same in every environment.
-  federations = local.oauth ? [
+  federations = [
     for federation in var.team.oauth.federations : federation.host == "cdp" ? {
       name     = federation.name
       issuer   = var.cdp.issuer
@@ -52,12 +51,12 @@ locals {
       subject  = federation.subject
       audience = "api://AzureADTokenExchange"
     }
-  ] : []
+  ]
 
-  client_ids = local.oauth ? concat(
-    [module.registration[0].client_id],
+  client_ids = concat(
+    [module.registration.client_id],
     [for client in var.team.oauth.externalClients : client.clientId],
-  ) : []
+  )
 }
 
 module "project" {
@@ -88,7 +87,6 @@ module "deployment" {
 
 module "registration" {
   source = "../entra-team-app"
-  count  = local.oauth ? 1 : 0
 
   display_name     = format(var.names.registration, local.slug)
   owner_object_ids = var.owner_object_ids
@@ -104,7 +102,6 @@ module "api" {
   team_slug          = local.slug
   api_name           = format(var.names.api, local.slug)
   api_management     = var.platform.api_management
-  credential_type    = var.team.gateway.credentialType
   client_ids         = local.client_ids
   authorise_fragment = var.platform.authorise_fragment
 

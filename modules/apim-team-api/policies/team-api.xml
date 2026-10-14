@@ -1,11 +1,9 @@
 <policies>
   <inbound>
     <base />
-%{ if oauth ~}
     <set-variable name="aipClients" value="{{${clients_named_value}}}" />
     <set-variable name="aipAccess" value="{{${access_named_value}}}" />
     <include-fragment fragment-id="${authorise_fragment}" />
-%{ endif ~}
     <choose>
       <when condition="@(context.Operation.Id == "whoami")">
         <return-response>
@@ -16,7 +14,7 @@
           <set-body>@{
             var body = new JObject();
             body["team"] = "${team}";
-            body["credentialType"] = "${credential_label}";
+            body["credentialType"] = "oauth";
             body["clientId"] = context.Variables.GetValueOrDefault<string>("aipClientId", "");
             body["accessWindow"] = context.Variables.GetValueOrDefault<string>("aipWindow", "");
             body["allowedDeployments"] = new JArray(${granted});
@@ -64,7 +62,7 @@
     <llm-emit-token-metric namespace="aip">
       <dimension name="team" value="${team}" />
       <dimension name="deployment" value="@((string)context.Variables["aipDeployment"])" />
-      <dimension name="credentialType" value="${credential_label}" />
+      <dimension name="credentialType" value="oauth" />
     </llm-emit-token-metric>
     <set-header name="Authorization" exists-action="delete" />
     <set-header name="api-key" exists-action="delete" />
