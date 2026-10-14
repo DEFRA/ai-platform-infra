@@ -5,8 +5,8 @@ import { loadValidators } from '../../src/schemas.js'
 import {
   environmentParams,
   INFRA_DIR,
-  keyTeam,
-  oauthTeam,
+  alphaTeam,
+  betaTeam,
   pin,
   registryEntry
 } from '../fixtures/gitops-files.js'
@@ -32,35 +32,39 @@ describe('loadValidators', () => {
   })
 
   test('rejects an unknown property in a team file', () => {
-    expect(validators.team(keyTeam({ billingCode: 'X1' }))).toContainEqual(
+    expect(validators.team(alphaTeam({ billingCode: 'X1' }))).toContainEqual(
       '/ must NOT have additional properties (billingCode)'
     )
   })
 
   test('rejects a team file that names a resource', () => {
-    const team = keyTeam({ project: { name: 'aip-alpha' } })
+    const team = alphaTeam({ project: { name: 'aip-alpha' } })
 
     expect(validators.team(team)).toContainEqual(
       '/ must NOT have additional properties (project)'
     )
   })
 
-  test('requires oauth when the credential type is oauth', () => {
-    const { oauth, ...team } = oauthTeam()
+  test('requires oauth for every team that is not removed', () => {
+    const { oauth, ...team } = betaTeam()
 
     expect(validators.team(team)).toContain(
       "/ must have required property 'oauth'"
     )
   })
 
-  test('refuses oauth on a subscription-key team', () => {
-    const team = keyTeam({ oauth: oauthTeam().oauth })
+  test('refuses a subscription key for a team: the team tier is OAuth only', () => {
+    const team = alphaTeam({
+      gateway: { ...alphaTeam().gateway, credentialType: 'subscription-key' }
+    })
 
-    expect(validators.team(team)).toContain('/ must NOT be valid')
+    expect(validators.team(team)).toContain(
+      '/gateway/credentialType must be equal to one of the allowed values'
+    )
   })
 
   test('requires removeAfter when a team is pending removal', () => {
-    const team = keyTeam({ status: 'pending-removal' })
+    const team = alphaTeam({ status: 'pending-removal' })
 
     expect(validators.team(team)).toContain(
       "/ must have required property 'removeAfter'"
@@ -74,7 +78,7 @@ describe('loadValidators', () => {
     'github:octocat',
     'unknown'
   ])('refuses %s as updatedBy', (updatedBy) => {
-    const team = keyTeam({ updatedBy })
+    const team = alphaTeam({ updatedBy })
 
     expect(validators.team(team)).toContainEqual(
       expect.stringContaining('/updatedBy must match pattern')
@@ -86,13 +90,13 @@ describe('loadValidators', () => {
     'github:583231',
     'app:ai-platform-backend'
   ])('accepts %s as updatedBy, one identity of a known kind', (updatedBy) => {
-    expect(validators.team(keyTeam({ updatedBy }))).toEqual([])
+    expect(validators.team(alphaTeam({ updatedBy }))).toEqual([])
   })
 
   test.each(['Alpha', 'a', 'alpha-', '1alpha', 'a'.repeat(25)])(
     'refuses the team slug %s',
     (slug) => {
-      const team = keyTeam({ team: { slug, serviceCode: 'ZZZ' } })
+      const team = alphaTeam({ team: { slug, serviceCode: 'ZZZ' } })
 
       expect(validators.team(team)).toContainEqual(
         expect.stringContaining('/team/slug must match pattern')

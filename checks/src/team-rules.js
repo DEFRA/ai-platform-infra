@@ -14,10 +14,10 @@ const MAX_DEPLOYMENTS_PER_ACCOUNT = 32
 // soft-deleted ones included, up to 250 (Microsoft Learn, Microsoft Entra
 // service limits, checked 14 Oct 2026). The deploy identity creates the
 // platform's API audience registration and its service principal, and the
-// same pair for each OAuth team.
+// same pair for each team, every team being an OAuth team.
 const DEFAULT_CREATED_OBJECT_LIMIT = 250
 const PLATFORM_ENTRA_OBJECTS = 2
-const ENTRA_OBJECTS_PER_OAUTH_TEAM = 2
+const ENTRA_OBJECTS_PER_TEAM = 2
 
 function problem(file, message) {
   return { file, message }
@@ -44,7 +44,7 @@ function federationKey(federation) {
 
 function regionFor(sku, params) {
   return (sku.regions ?? []).find((region) =>
-    params.foundry_regions.includes(region)
+    params.azure.foundry.regions.includes(region)
   )
 }
 
@@ -332,7 +332,7 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
   const capacity = new Map()
   const perAccount = new Map()
   const trusted = new Map()
-  let oauthTeams = 0
+  let registrations = 0
 
   for (const { path, document } of teams) {
     for (const deployment of document.deployments) {
@@ -352,7 +352,7 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
     }
 
     if (document.oauth) {
-      oauthTeams += 1
+      registrations += 1
     }
 
     for (const federation of document.oauth?.federations ?? []) {
@@ -369,13 +369,13 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
 
   const limit = entry.entra.createdObjectLimit ?? DEFAULT_CREATED_OBJECT_LIMIT
   const entraObjects =
-    PLATFORM_ENTRA_OBJECTS + ENTRA_OBJECTS_PER_OAUTH_TEAM * oauthTeams
+    PLATFORM_ENTRA_OBJECTS + ENTRA_OBJECTS_PER_TEAM * registrations
 
   if (entraObjects > limit) {
     problems.push(
       problem(
         `environments/${environment}`,
-        `${oauthTeams} OAuth teams need ${entraObjects} Entra objects from the ` +
+        `${registrations} teams need ${entraObjects} Entra objects from the ` +
           `${environment} deploy identity; its limit is ${limit}`
       )
     )

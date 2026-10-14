@@ -18,8 +18,8 @@ import {
   environmentParams,
   globalParams,
   INFRA_DIR,
-  keyTeam,
-  oauthTeam,
+  alphaTeam,
+  betaTeam,
   pin,
   registryEntry,
   serialise,
@@ -56,7 +56,7 @@ function submitTeam(document) {
 
 describe('validateTenantsChange', () => {
   test('accepts a key team written by the App', () => {
-    const head = submitTeam(keyTeam())
+    const head = submitTeam(alphaTeam())
 
     expect(
       validateTenantsChange({
@@ -65,14 +65,14 @@ describe('validateTenantsChange', () => {
         head,
         context,
         author: WRITER,
-        operationId: keyTeam().operationId
+        operationId: alphaTeam().operationId
       })
     ).toEqual({ environment: 'infradev', problems: [] })
   })
 
   test('refuses a change outside environments/', () => {
     repository.write('.github/workflows/apply.yml', 'on: push\n')
-    const head = submitTeam(keyTeam())
+    const head = submitTeam(alphaTeam())
 
     expect(
       messages(
@@ -88,7 +88,7 @@ describe('validateTenantsChange', () => {
   })
 
   test('refuses an environment missing from the registry', () => {
-    const document = keyTeam({ environment: 'qa' })
+    const document = alphaTeam({ environment: 'qa' })
     const head = submitTeam(document)
 
     expect(
@@ -105,7 +105,7 @@ describe('validateTenantsChange', () => {
   })
 
   test('refuses an author who is not a writer', () => {
-    const head = submitTeam(keyTeam())
+    const head = submitTeam(alphaTeam())
 
     expect(
       messages(
@@ -122,7 +122,7 @@ describe('validateTenantsChange', () => {
 
   test('refuses capacity that together exceeds the quota', () => {
     for (const slug of ['team-a', 'team-b', 'team-c']) {
-      const team = keyTeam({ team: { slug, serviceCode: 'ZZZ' } })
+      const team = alphaTeam({ team: { slug, serviceCode: 'ZZZ' } })
       repository.write(
         teamPath(team),
         serialise({
@@ -147,8 +147,8 @@ describe('validateTenantsChange', () => {
   })
 
   test('accepts the removal of a team file', () => {
-    const before = submitTeam(oauthTeam())
-    repository.remove(teamPath(oauthTeam()))
+    const before = submitTeam(betaTeam())
+    repository.remove(teamPath(betaTeam()))
     const head = repository.commit('chore: remove beta')
 
     expect(
@@ -165,7 +165,7 @@ describe('validateTenantsChange', () => {
 
 describe('validateTenantsOnMain', () => {
   test('re-validates every team file in the environment', () => {
-    const head = submitTeam(keyTeam({ revision: 0 }))
+    const head = submitTeam(alphaTeam({ revision: 0 }))
 
     expect(
       messages(
@@ -314,7 +314,7 @@ describe('validateEnvironmentsRepo', () => {
           rejectPlaceholders: true
         })
       )
-    ).toContain('/apim_publisher/email is a placeholder value')
+    ).toContain('/azure/apim/publisher/email is a placeholder value')
   })
 
   test('refuses a configuration without shared parameters', () => {
@@ -343,7 +343,11 @@ describe('validateEnvironmentsRepo', () => {
   test('validates the effective parameters of an environment', () => {
     writeRepo(
       { schemaVersion: 1, environments: [registryEntry()] },
-      { infradev: environmentParams({ foundry_regions: ['swedencentral'] }) }
+      {
+        infradev: environmentParams({
+          azure: { foundry: { regions: ['swedencentral'] } }
+        })
+      }
     )
 
     expect(

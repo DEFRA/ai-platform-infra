@@ -27,8 +27,8 @@ function teamsAt(repoDir, ref, environment) {
 
 /**
  * Address prefixes whose deletion or replacement the merged diff explains:
- * removed teams, removed deployments, removed OAuth registrations, and
- * removed or re-pointed federated credentials.
+ * removed teams, removed deployments, and removed or re-pointed federated
+ * credentials.
  *
  * @param {Map<string, object>} before - Teams at the last applied commit.
  * @param {Map<string, object>} after - Teams at the commit being applied.
@@ -53,11 +53,6 @@ function explainedRemovals(before, after) {
       }
     }
 
-    if (previous.oauth && !current.oauth) {
-      prefixes.push(`${team}.module.registration[0]`)
-      continue
-    }
-
     const federations = new Map(
       (current.oauth?.federations ?? []).map((f) => [f.name, f])
     )
@@ -66,7 +61,7 @@ function explainedRemovals(before, after) {
 
       if (!next || federationKey(next) !== federationKey(federation)) {
         prefixes.push(
-          `${team}.module.registration[0].` +
+          `${team}.module.registration.` +
             'azuread_application_federated_identity_credential.federation' +
             `["${federation.name}"]`
         )

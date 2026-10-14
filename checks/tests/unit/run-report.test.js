@@ -5,7 +5,7 @@ import {
   summariseChanges,
   withoutSensitive
 } from '../../src/run-report.js'
-import { keyTeam, serialise, teamPath } from '../fixtures/gitops-files.js'
+import { alphaTeam, serialise, teamPath } from '../fixtures/gitops-files.js'
 import { createRepository } from '../helpers/repository.js'
 
 const ALPHA = 'module.team["alpha"]'
@@ -119,7 +119,7 @@ describe('buildRunReport', () => {
 
     try {
       const base = repository.commit('chore: initialise')
-      repository.write(teamPath(keyTeam()), serialise(keyTeam()))
+      repository.write(teamPath(alphaTeam()), serialise(alphaTeam()))
       const head = repository.commit(
         'chore: write alpha\n\nOperation-Id: 000000000000000000000001'
       )

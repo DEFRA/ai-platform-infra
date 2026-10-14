@@ -1,5 +1,12 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -7,7 +14,7 @@ import { run, tagResolver } from '../../src/cli.js'
 import {
   ENVIRONMENTS_DIR,
   INFRA_DIR,
-  keyTeam,
+  alphaTeam,
   serialise,
   teamPath
 } from '../fixtures/gitops-files.js'
@@ -53,6 +60,72 @@ describe('run', () => {
     expect(run(['catalogue', '--infra', INFRA_DIR], capture())).toBe(0)
   })
 
+  test('writes the deep-merged parameters of one environment for Terraform', () => {
+    const out = join(scratch, 'params.tfvars.json')
+
+    expect(
+      run(
+        [
+          'params',
+          '--infra',
+          INFRA_DIR,
+          '--environments',
+          ENVIRONMENTS_DIR,
+          '--environment',
+          'infradev',
+          '--out',
+          out
+        ],
+        capture()
+      )
+    ).toBe(0)
+
+    const params = JSON.parse(readFileSync(out, 'utf8'))
+    expect(params).toMatchObject({
+      environment: 'infradev',
+      service_code: 'AIP',
+      azure: {
+        location: 'uksouth',
+        apim: { sku: 'Developer', publisher: { name: 'Defra AI Platform' } },
+        foundry: { regions: ['uksouth', 'swedencentral'] }
+      }
+    })
+    expect(params).not.toHaveProperty('$schema')
+  })
+
+  test('writes no parameters that fail the schema', () => {
+    const environments = join(scratch, 'environments-repo')
+    const out = join(scratch, 'params.tfvars.json')
+    mkdirSync(join(environments, 'environments', 'infradev'), {
+      recursive: true
+    })
+    writeFileSync(join(environments, 'global.tfvars.json'), '{}')
+    writeFileSync(
+      join(environments, 'environments', 'infradev', 'platform.tfvars.json'),
+      '{"environment":"infradev"}'
+    )
+    const io = capture()
+
+    expect(
+      run(
+        [
+          'params',
+          '--infra',
+          INFRA_DIR,
+          '--environments',
+          environments,
+          '--environment',
+          'infradev',
+          '--out',
+          out
+        ],
+        io
+      )
+    ).toBe(1)
+    expect(io.out).toContain("must have required property 'azure'")
+    expect(existsSync(out)).toBe(false)
+  })
+
   test('prints GitHub annotations inside Actions', () => {
     vi.stubEnv('GITHUB_ACTIONS', 'true')
     const io = capture()
@@ -72,7 +145,7 @@ describe('run', () => {
     expect(code).toBe(1)
     expect(io.out).toContain(
       '::error file=global.tfvars.json::' +
-        '/apim_publisher/email is a placeholder value'
+        '/azure/apim/publisher/email is a placeholder value'
     )
   })
 
@@ -81,7 +154,7 @@ describe('run', () => {
 
     try {
       const base = repository.commit('chore: initialise')
-      repository.write(teamPath(keyTeam()), serialise(keyTeam()))
+      repository.write(teamPath(alphaTeam()), serialise(alphaTeam()))
       const head = repository.commit('chore: alpha')
       const io = capture()
 

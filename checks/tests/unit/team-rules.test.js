@@ -8,8 +8,8 @@ import {
 import {
   environmentParams,
   INFRA_DIR,
-  keyTeam,
-  oauthTeam,
+  alphaTeam,
+  betaTeam,
   registryEntry,
   serialise,
   teamPath
@@ -31,7 +31,7 @@ function check(document, options = {}) {
   }).map((problem) => problem.message)
 }
 
-function withDeployment(changes, team = keyTeam()) {
+function withDeployment(changes, team = alphaTeam()) {
   return {
     ...team,
     deployments: [{ ...team.deployments[0], ...changes }]
@@ -39,15 +39,15 @@ function withDeployment(changes, team = keyTeam()) {
 }
 
 function withOauth(changes) {
-  const team = oauthTeam()
+  const team = betaTeam()
 
   return { ...team, oauth: { ...team.oauth, ...changes } }
 }
 
 describe('checkTeamFile', () => {
   test.each([
-    ['key', keyTeam()],
-    ['OAuth', oauthTeam()]
+    ['key', alphaTeam()],
+    ['OAuth', betaTeam()]
   ])('accepts the %s team example', (_, document) => {
     expect(check(document)).toEqual([])
   })
@@ -69,7 +69,7 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a file of 60 KB or more', () => {
-    const big = keyTeam({ $schema: 'x'.repeat(61440) })
+    const big = alphaTeam({ $schema: 'x'.repeat(61440) })
 
     expect(check(big)).toEqual(['team file must be under 60 KB'])
   })
@@ -84,12 +84,12 @@ describe('checkTeamFile', () => {
       })
     }
 
-    const held = { previousText: serialise(keyTeam({ revision: 0 })) }
+    const held = { previousText: serialise(alphaTeam({ revision: 0 })) }
 
     test('refuses a new grant of a deprecated model', () => {
-      expect(check(keyTeam(), { models: withStatus('deprecated') })).toContain(
-        'deployment gpt-5-nano is deprecated: no new grants'
-      )
+      expect(
+        check(alphaTeam(), { models: withStatus('deprecated') })
+      ).toContain('deployment gpt-5-nano is deprecated: no new grants')
     })
 
     test.each([
@@ -97,19 +97,19 @@ describe('checkTeamFile', () => {
       ['the whole environment on main', { onMain: true }]
     ])('keeps a deprecated grant through %s', (_, options) => {
       expect(
-        check(keyTeam(), { models: withStatus('deprecated'), ...options })
+        check(alphaTeam(), { models: withStatus('deprecated'), ...options })
       ).toEqual([])
     })
 
     test('refuses a retired model even where the team held it', () => {
       expect(
-        check(keyTeam(), { models: withStatus('retired'), onMain: true })
+        check(alphaTeam(), { models: withStatus('retired'), onMain: true })
       ).toContain('deployment gpt-5-nano is retired: no grants')
     })
   })
 
   test('refuses text that is not canonical', () => {
-    const document = keyTeam()
+    const document = alphaTeam()
 
     expect(check(document, { text: JSON.stringify(document) })).toEqual([
       'team file is not in canonical serialisation'
@@ -117,7 +117,7 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a file name that differs from the slug', () => {
-    const document = keyTeam()
+    const document = alphaTeam()
 
     expect(
       check(document, { path: 'environments/infradev/gamma.json' })
@@ -125,7 +125,7 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a folder that is not the environment', () => {
-    const document = keyTeam({ environment: 'sandbox' })
+    const document = alphaTeam({ environment: 'sandbox' })
 
     expect(
       check(document, { path: 'environments/infradev/alpha.json' })
@@ -133,15 +133,15 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a revision that does not increase', () => {
-    const previous = keyTeam({ revision: 3 })
+    const previous = alphaTeam({ revision: 3 })
 
     expect(
-      check(keyTeam({ revision: 3 }), { previousText: serialise(previous) })
+      check(alphaTeam({ revision: 3 }), { previousText: serialise(previous) })
     ).toContain('revision must be greater than 3')
   })
 
   test('refuses an operation ID other than the branch operation', () => {
-    expect(check(keyTeam(), { operationId: 'other-operation' })).toContain(
+    expect(check(alphaTeam(), { operationId: 'other-operation' })).toContain(
       'operationId must be other-operation'
     )
   })
@@ -157,7 +157,7 @@ describe('checkTeamFile', () => {
   test('refuses a model that is not offered to teams', () => {
     const document = {
       ...withDeployment({ slug: 'gpt-4o' }),
-      gateway: { ...keyTeam().gateway, allowedDeployments: ['gpt-4o'] }
+      gateway: { ...alphaTeam().gateway, allowedDeployments: ['gpt-4o'] }
     }
 
     expect(check(document)).toEqual(
@@ -175,9 +175,11 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a deployment with no Foundry region in the environment', () => {
-    const params = environmentParams({ foundry_regions: ['uksouth'] })
+    const params = environmentParams({
+      azure: { foundry: { regions: ['uksouth'] } }
+    })
 
-    expect(check(keyTeam(), { params })).toContain(
+    expect(check(alphaTeam(), { params })).toContain(
       'deployment gpt-5-nano has no Foundry region in infradev'
     )
   })
@@ -189,7 +191,7 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a deployment listed twice', () => {
-    const team = keyTeam()
+    const team = alphaTeam()
     const document = {
       ...team,
       deployments: [team.deployments[0], team.deployments[0]]
@@ -199,7 +201,7 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a grant that is not a dedicated deployment', () => {
-    const team = keyTeam()
+    const team = alphaTeam()
     const document = {
       ...team,
       gateway: { ...team.gateway, allowedDeployments: ['gpt-4-1-nano'] }
@@ -212,7 +214,7 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a token limit above the team capacity', () => {
-    const team = keyTeam()
+    const team = alphaTeam()
     const document = {
       ...team,
       gateway: {
@@ -227,9 +229,9 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a removed team that keeps deployments', () => {
-    expect(check(keyTeam({ status: 'removed' }))).toContain(
-      'a removed team keeps no resources'
-    )
+    const { oauth, ...team } = alphaTeam({ status: 'removed' })
+
+    expect(check(team)).toContain('a removed team keeps no resources')
   })
 
   test('refuses oauth where Entra is not enabled', () => {
@@ -237,14 +239,14 @@ describe('checkTeamFile', () => {
       entra: { enabled: false, tenantId: registryEntry().entra.tenantId }
     })
 
-    expect(check(oauthTeam(), { entry })).toContain(
+    expect(check(betaTeam(), { entry })).toContain(
       'oauth is not enabled in infradev'
     )
   })
 
   test('refuses a CDP federation that names its own issuer or subject', () => {
     const federation = {
-      ...oauthTeam().oauth.federations[0],
+      ...betaTeam().oauth.federations[0],
       subject: 'arn:aws:iam::111111111111:role/beta-api'
     }
 
@@ -256,7 +258,7 @@ describe('checkTeamFile', () => {
   test.each(['Beta_API', 'beta--api', '-beta', 'b'.repeat(33)])(
     'refuses %s, which CDP would not accept as a service',
     (service) => {
-      const federation = { ...oauthTeam().oauth.federations[0], service }
+      const federation = { ...betaTeam().oauth.federations[0], service }
 
       expect(check(withOauth({ federations: [federation] }))).toContainEqual(
         expect.stringContaining('/oauth/federations/0/service must')
@@ -304,7 +306,7 @@ describe('checkTeamFile', () => {
   })
 
   test('refuses a federation name used twice', () => {
-    const federation = oauthTeam().oauth.federations[0]
+    const federation = betaTeam().oauth.federations[0]
 
     expect(
       check(withOauth({ federations: [federation, federation] }))
@@ -329,7 +331,7 @@ describe('checkTeamFile', () => {
     const entry = registryEntry({ class: 'consumer-production' })
 
     test('refuses secrets without an exception', () => {
-      expect(check(oauthTeam(), { entry })).toContain(
+      expect(check(betaTeam(), { entry })).toContain(
         'secrets in production need an exception naming the host'
       )
     })
@@ -360,7 +362,7 @@ describe('checkTeamFile', () => {
 
 describe('checkEnvironmentTeams', () => {
   test('refuses team capacity where the environment has no quota', () => {
-    const document = keyTeam({ environment: 'sandbox' })
+    const document = alphaTeam({ environment: 'sandbox' })
 
     expect(
       checkEnvironmentTeams({
@@ -383,7 +385,7 @@ describe('checkEnvironmentTeams', () => {
     const teams = Array.from({ length: 3 }, (_, index) => {
       const document = withDeployment(
         { capacity: 4 },
-        keyTeam({ team: { slug: `team-${index}`, serviceCode: 'ZZZ' } })
+        alphaTeam({ team: { slug: `team-${index}`, serviceCode: 'ZZZ' } })
       )
 
       return { path: teamPath(document), document }
@@ -407,7 +409,7 @@ describe('checkEnvironmentTeams', () => {
 
   test('refuses more deployments than Azure allows in one Foundry account', () => {
     const teams = Array.from({ length: 33 }, (_, index) => {
-      const document = keyTeam({
+      const document = alphaTeam({
         team: { slug: `team-${index}`, serviceCode: 'ZZZ' }
       })
 
@@ -430,8 +432,8 @@ describe('checkEnvironmentTeams', () => {
   })
 
   test('refuses a CDP service trusted by two teams', () => {
-    const first = oauthTeam()
-    const second = oauthTeam({ team: { slug: 'gamma', serviceCode: 'ZZZ' } })
+    const first = betaTeam()
+    const second = betaTeam({ team: { slug: 'gamma', serviceCode: 'ZZZ' } })
     const teams = [first, second].map((document) => ({
       path: teamPath(document),
       document
@@ -456,10 +458,10 @@ describe('checkEnvironmentTeams', () => {
   describe("the deploy identity's Entra objects", () => {
     function oauthTeams(count) {
       return Array.from({ length: count }, (_, index) => {
-        const document = oauthTeam({
+        const document = betaTeam({
           team: { slug: `team-${index}`, serviceCode: 'ZZZ' },
           oauth: {
-            ...oauthTeam().oauth,
+            ...betaTeam().oauth,
             federations: [
               { name: 'api', host: 'cdp', service: `service-${index}` }
             ]
@@ -491,7 +493,7 @@ describe('checkEnvironmentTeams', () => {
         {
           file: 'environments/infradev',
           message:
-            '125 OAuth teams need 252 Entra objects from the infradev deploy ' +
+            '125 teams need 252 Entra objects from the infradev deploy ' +
             'identity; its limit is 250'
         }
       ])

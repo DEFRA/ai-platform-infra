@@ -52,7 +52,10 @@
       "additionalProperties": false,
       "required": ["credentialType", "allowedDeployments", "limits"],
       "properties": {
-        "credentialType": { "enum": ["oauth", "subscription-key"] },
+        "credentialType": {
+          "description": "The team tier is OAuth only, by federated credential or client secret; subscription keys are the Research tier's (14 October 2026). The property stays so the shape can grow.",
+          "enum": ["oauth"]
+        },
         "allowedDeployments": {
           "description": "Catalogue slugs the team API may call; anything else returns 403 model-not-granted.",
           "type": "array",
@@ -121,15 +124,10 @@
     },
     {
       "if": {
-        "properties": {
-          "gateway": {
-            "type": "object",
-            "properties": { "credentialType": { "const": "oauth" } }
-          }
-        }
+        "properties": { "status": { "const": "removed" } }
       },
-      "then": { "required": ["oauth"] },
-      "else": { "not": { "required": ["oauth"] } }
+      "then": { "not": { "required": ["oauth"] } },
+      "else": { "required": ["oauth"] }
     }
   ],
   "$defs": {

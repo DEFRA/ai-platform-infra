@@ -44,7 +44,9 @@ describe('checkEnvironmentParams', () => {
 
   test('refuses named exceptions on the public minimal platform', () => {
     const params = environmentParams({
-      named_exceptions: [{ id: 'X1', owner: 'AI Platform', ends: 'TBC' }]
+      azure: {
+        named_exceptions: [{ id: 'X1', owner: 'AI Platform', ends: 'TBC' }]
+      }
     })
 
     expect(check(params)).toContain(
@@ -53,7 +55,9 @@ describe('checkEnvironmentParams', () => {
   })
 
   test('refuses the private topology until it is built', () => {
-    const params = environmentParams({ network: { mode: 'private' } })
+    const params = environmentParams({
+      azure: { network: { mode: 'private' } }
+    })
 
     expect(check(params)).toEqual(
       expect.arrayContaining([
@@ -74,7 +78,7 @@ describe('checkEnvironmentParams', () => {
 
   test('accepts an existing CCoE-named resource group in Infradev', () => {
     const params = environmentParams({
-      existing_resource_group: 'SNDAIEAIPRGP1401'
+      azure: { existing_resource_group: 'SNDAIEAIPRGP1401' }
     })
 
     expect(check(params)).toEqual([])
@@ -84,7 +88,7 @@ describe('checkEnvironmentParams', () => {
     const entry = registryEntry({ name: 'dev', class: 'consumer-lower' })
     const params = environmentParams({
       environment: 'dev',
-      existing_resource_group: 'SNDAIEAIPRGP1401'
+      azure: { existing_resource_group: 'SNDAIEAIPRGP1401' }
     })
 
     expect(check(params, entry)).toContain(
@@ -94,10 +98,14 @@ describe('checkEnvironmentParams', () => {
   })
 
   test('refuses a resource group name that is not CCoE-coded', () => {
-    const params = environmentParams({ existing_resource_group: 'rg-aip' })
+    const params = environmentParams({
+      azure: { existing_resource_group: 'rg-aip' }
+    })
 
     expect(check(params)).toContainEqual(
-      expect.stringContaining('/existing_resource_group must match pattern')
+      expect.stringContaining(
+        '/azure/existing_resource_group must match pattern'
+      )
     )
   })
 
@@ -108,7 +116,9 @@ describe('checkEnvironmentParams', () => {
   })
 
   test('refuses a first Foundry region other than UK South', () => {
-    const params = environmentParams({ foundry_regions: ['swedencentral'] })
+    const params = environmentParams({
+      azure: { foundry: { regions: ['swedencentral'] } }
+    })
 
     expect(check(params)).toEqual(['the first Foundry region must be uksouth'])
   })
@@ -132,16 +142,18 @@ describe('findPlaceholders', () => {
     expect(
       findPlaceholders(FILE, environmentParams()).map((p) => p.message)
     ).toEqual([
-      '/apim_publisher/email is a placeholder value',
-      '/identities/portal_api_principal_object_id is a placeholder value'
+      '/azure/apim/publisher/email is a placeholder value',
+      '/azure/identities/portal_api_principal_object_id is a placeholder value'
     ])
   })
 
   test('reports nothing for real-looking values', () => {
     const params = environmentParams({
-      apim_publisher: { name: 'Defra AI Platform', email: 'aip@defra.gov.uk' },
-      identities: {
-        portal_api_principal_object_id: '6c3f7a1e-2b4d-4e8f-9a0b-1c2d3e4f5a6b'
+      azure: {
+        apim: { publisher: { email: 'aip@defra.gov.uk' } },
+        identities: {
+          portal_api_principal_object_id: '6c3f7a1e-2b4d-4e8f-9a0b-1c2d3e4f5a6b'
+        }
       }
     })
 

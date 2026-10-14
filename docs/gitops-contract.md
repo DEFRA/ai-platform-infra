@@ -7,15 +7,22 @@ this page explains them. Design source: the IaC baseline plan and designs B and 
 
 ## Repositories and files
 
-| Repository                        | File                                                            | Written by                   | Schema                                                                         |
-| --------------------------------- | --------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
-| `ai-platform-tenants` (internal)  | `environments/{env}/{slug}.json`                                | `submit` as the GitHub App   | [`team`](../schemas/team.schema.json)                                          |
-| `ai-platform-deployments` (int.)  | `environments/{env}/platform.json`                              | `submit` as the GitHub App   | [`pin`](../schemas/pin.schema.json)                                            |
-| `ai-platform-environments` (int.) | `registry.json`                                                 | Platform engineers, reviewed | [`registry`](../schemas/registry.schema.json)                                  |
-| `ai-platform-environments` (int.) | `global.tfvars.json`, `environments/{env}/platform.tfvars.json` | Platform engineers, reviewed | [`environment`](../schemas/environment.schema.json), against the merged result |
+| Repository                        | File                                                            | Written by                   | Schema                                                                              |
+| --------------------------------- | --------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------- |
+| `ai-platform-tenants` (internal)  | `environments/{env}/{slug}.json`                                | `submit` as the GitHub App   | [`team`](../schemas/team.schema.json)                                               |
+| `ai-platform-deployments` (int.)  | `environments/{env}/platform.json`                              | `submit` as the GitHub App   | [`pin`](../schemas/pin.schema.json)                                                 |
+| `ai-platform-environments` (int.) | `registry.json`                                                 | Platform engineers, reviewed | [`registry`](../schemas/registry.schema.json)                                       |
+| `ai-platform-environments` (int.) | `global.tfvars.json`, `environments/{env}/platform.tfvars.json` | Platform engineers, reviewed | [`environment`](../schemas/environment.schema.json), against the deep-merged result |
 
 Placeholder copies of each live in [`examples/`](../examples), laid out by repository. They are
 schema-valid and are the test fixtures for the checks and the Portal API.
+
+Environment parameters hold the codes every cloud shares at the top level (`environment`,
+`service_code`, `naming`) and what is specific to a cloud under its key: `azure` today, read by the
+Azure platform root, and `aws` beside it later, read by its own root. `aip-checks params` deep-merges
+the global file with the environment's, objects key by key and arrays and values replaced, validates the
+result and writes the one file Terraform reads, so an environment sets `azure.apim.sku` without
+restating the rest of `azure`.
 
 ## Every machine-written file
 
@@ -49,6 +56,10 @@ Rules beyond the schema, enforced by `validate`:
   resource.
 - `allowedDeployments` holds only the team's own deployments in Phase 1 (shared Research grants
   follow); `tokensPerMinute` does not exceed the team's capacity.
+- OAuth only: the team tier's `gateway.credentialType` is `oauth`, and every team that is not
+  `removed` has an `oauth` block, using federated credentials, client secrets where
+  `secretsAllowed`, or both, including for local development. Subscription keys belong to the Research
+  tier, never to a team (direction 14 October 2026).
 - OAuth: Entra enabled in the registry entry. A CDP federation names only its CDP service; Terraform
   derives the issuer, the subject `arn:aws:iam::{account}:role/{service}` and the audience from the
   environment's registry entry, so a team file holds nothing environment-specific for CDP. Azure
@@ -56,8 +67,8 @@ Rules beyond the schema, enforced by `validate`:
   one team per CDP service per environment; secrets in a `consumer-production` environment need an
   exception that never names a CDP service.
 - Entra objects: the environment's deploy identity creates the platform's API audience registration
-  and service principal, and the same pair for each OAuth team. Entra counts every object it creates,
-  soft-deleted ones included, so the OAuth teams of an environment stay within the registry entry's
+  and service principal, and the same pair for each team. Entra counts every object it creates,
+  soft-deleted ones included, so the teams of an environment stay within the registry entry's
   `entra.createdObjectLimit` (250 by default); each tenants apply permanently deletes the
   registrations it removed.
 

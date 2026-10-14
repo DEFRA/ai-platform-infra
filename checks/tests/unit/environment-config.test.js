@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import {
   configFiles,
+  deepMerge,
   readEnvironmentConfig
 } from '../../src/environment-config.js'
 
@@ -21,19 +22,44 @@ function write(path, document) {
 }
 
 describe('readEnvironmentConfig', () => {
-  test('replaces a whole global key with the environment value', () => {
+  test('merges objects at any depth, so an environment sets one value', () => {
     write('global.tfvars.json', {
-      location: 'uksouth',
-      apim_publisher: { name: 'Defra AI Platform', email: 'a@defra.gov.uk' }
+      service_code: 'AIP',
+      azure: {
+        location: 'uksouth',
+        apim: {
+          publisher: { name: 'Defra AI Platform', email: 'a@defra.gov.uk' }
+        },
+        foundry: { regions: ['uksouth', 'swedencentral'] }
+      }
     })
     write('environments/infradev/platform.tfvars.json', {
-      apim_publisher: { email: 'b@defra.gov.uk' }
+      azure: {
+        apim: { sku: 'Developer', publisher: { email: 'b@defra.gov.uk' } },
+        foundry: { regions: ['uksouth'] }
+      }
     })
 
     expect(readEnvironmentConfig(dir, 'infradev')).toEqual({
-      location: 'uksouth',
-      apim_publisher: { email: 'b@defra.gov.uk' }
+      service_code: 'AIP',
+      azure: {
+        location: 'uksouth',
+        apim: {
+          sku: 'Developer',
+          publisher: { name: 'Defra AI Platform', email: 'b@defra.gov.uk' }
+        },
+        foundry: { regions: ['uksouth'] }
+      }
     })
+  })
+
+  test('replaces arrays, values and null rather than merging them', () => {
+    expect(
+      deepMerge(
+        { a: [1, 2], b: { c: 1 }, d: 1 },
+        { a: [3], b: null, d: { e: 2 } }
+      )
+    ).toEqual({ a: [3], b: null, d: { e: 2 } })
   })
 
   test('reads only the files that exist', () => {

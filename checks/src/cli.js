@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util'
 
 import { errorAnnotation } from './annotations.js'
 import { canonicalJson } from './canonical-json.js'
+import { readEnvironmentConfig } from './environment-config.js'
 import { guardPlan, tenantsRemovals } from './plan-guard.js'
 import { buildRunReport } from './run-report.js'
 import { loadValidators } from './schemas.js'
@@ -253,6 +254,28 @@ const COMMANDS = {
         })
       )
     )
+    return 0
+  },
+
+  // The one file Terraform reads an environment's parameters from.
+  params(values, io) {
+    requireOptions(values, ['infra', 'environments', 'environment', 'out'])
+    const { $schema, ...params } = readEnvironmentConfig(
+      values.environments,
+      values.environment
+    )
+    const problems = loadValidators(values.infra)
+      .environment(params)
+      .map((message) => ({
+        file: `environments/${values.environment}`,
+        message
+      }))
+
+    if (problems.length > 0) {
+      return report(problems, io)
+    }
+
+    writeFileSync(values.out, canonicalJson(params))
     return 0
   },
 

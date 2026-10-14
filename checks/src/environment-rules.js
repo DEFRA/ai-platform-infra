@@ -98,15 +98,16 @@ function checkEnvironmentParams({ file, params, entry, validators }) {
   }
 
   const problems = []
-  const isPublic = params.network.mode === 'public-minimal'
+  const { azure } = params
+  const isPublic = azure.network.mode === 'public-minimal'
 
   if (params.environment !== entry.name) {
     problems.push(problem(file, 'environment must equal the registry entry'))
   }
 
-  if (params.foundry_regions[0] !== params.location) {
+  if (azure.foundry.regions[0] !== azure.location) {
     problems.push(
-      problem(file, `the first Foundry region must be ${params.location}`)
+      problem(file, `the first Foundry region must be ${azure.location}`)
     )
   }
 
@@ -124,7 +125,7 @@ function checkEnvironmentParams({ file, params, entry, validators }) {
       )
     }
 
-    if (params.named_exceptions.length > 0) {
+    if (azure.named_exceptions.length > 0) {
       problems.push(
         problem(file, 'named exceptions apply only to the private topology')
       )
@@ -149,7 +150,7 @@ function checkEnvironmentParams({ file, params, entry, validators }) {
     }
   }
 
-  if (params.existing_resource_group && !PUBLIC_CLASSES.has(entry.class)) {
+  if (azure.existing_resource_group && !PUBLIC_CLASSES.has(entry.class)) {
     problems.push(
       problem(
         file,
@@ -159,7 +160,7 @@ function checkEnvironmentParams({ file, params, entry, validators }) {
     )
   }
 
-  if (CONSUMER_CLASSES.has(entry.class) && params.apim.sku !== 'PremiumV2') {
+  if (CONSUMER_CLASSES.has(entry.class) && azure.apim.sku !== 'PremiumV2') {
     problems.push(problem(file, 'consumer environments run PremiumV2 (D15)'))
   }
 

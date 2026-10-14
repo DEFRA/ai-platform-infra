@@ -4,8 +4,8 @@ import {
   tenantsRemovals
 } from '../../src/plan-guard.js'
 import {
-  keyTeam,
-  oauthTeam,
+  alphaTeam,
+  betaTeam,
   serialise,
   teamPath
 } from '../fixtures/gitops-files.js'
@@ -92,7 +92,7 @@ describe('guardPlan', () => {
 
 describe('explainedRemovals', () => {
   test('explains a removed team', () => {
-    const before = new Map([['alpha', keyTeam()]])
+    const before = new Map([['alpha', alphaTeam()]])
 
     expect(explainedRemovals(before, new Map())).toEqual([
       'module.team["alpha"]'
@@ -100,34 +100,16 @@ describe('explainedRemovals', () => {
   })
 
   test('explains a removed deployment', () => {
-    const before = new Map([['alpha', keyTeam()]])
-    const after = new Map([['alpha', keyTeam({ deployments: [] })]])
+    const before = new Map([['alpha', alphaTeam()]])
+    const after = new Map([['alpha', alphaTeam({ deployments: [] })]])
 
     expect(explainedRemovals(before, after)).toEqual([
       'module.team["alpha"].module.deployment["gpt-5-nano"]'
     ])
   })
 
-  test('explains a removed OAuth registration', () => {
-    const { oauth, ...rest } = oauthTeam()
-    const before = new Map([['beta', oauthTeam()]])
-    const after = new Map([
-      [
-        'beta',
-        {
-          ...rest,
-          gateway: { ...rest.gateway, credentialType: 'subscription-key' }
-        }
-      ]
-    ])
-
-    expect(explainedRemovals(before, after)).toEqual([
-      'module.team["beta"].module.registration[0]'
-    ])
-  })
-
   test('explains a federation that points at a new CDP service', () => {
-    const team = oauthTeam()
+    const team = betaTeam()
     const federation = {
       ...team.oauth.federations[0],
       service: 'beta-api-v2'
@@ -138,14 +120,14 @@ describe('explainedRemovals', () => {
     ])
 
     expect(explainedRemovals(before, after)).toEqual([
-      'module.team["beta"].module.registration[0].' +
+      'module.team["beta"].module.registration.' +
         'azuread_application_federated_identity_credential.federation' +
         '["beta-api"]'
     ])
   })
 
   test('explains nothing when a team is unchanged', () => {
-    const before = new Map([['alpha', keyTeam()]])
+    const before = new Map([['alpha', alphaTeam()]])
 
     expect(explainedRemovals(before, new Map(before))).toEqual([])
   })
@@ -156,9 +138,9 @@ describe('tenantsRemovals', () => {
     const repository = createRepository()
 
     try {
-      repository.write(teamPath(keyTeam()), serialise(keyTeam()))
+      repository.write(teamPath(alphaTeam()), serialise(alphaTeam()))
       const base = repository.commit('chore: alpha')
-      repository.remove(teamPath(keyTeam()))
+      repository.remove(teamPath(alphaTeam()))
       const head = repository.commit('chore: remove alpha')
 
       expect(
@@ -178,7 +160,7 @@ describe('tenantsRemovals', () => {
     const repository = createRepository()
 
     try {
-      repository.write(teamPath(keyTeam()), serialise(keyTeam()))
+      repository.write(teamPath(alphaTeam()), serialise(alphaTeam()))
       const head = repository.commit('chore: alpha')
 
       expect(

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { canonicalJson } from '../../src/canonical-json.js'
+import { deepMerge } from '../../src/environment-config.js'
 
 const INFRA_DIR = join(import.meta.dirname, '..', '..', '..')
 const EXAMPLES_DIR = join(INFRA_DIR, 'examples')
@@ -12,12 +13,13 @@ function example(path) {
 }
 
 /**
- * Key team `alpha` from examples/, which the schema tests prove valid.
+ * Team `alpha` from examples/, which the schema tests prove valid: an OAuth
+ * team that uses client secrets.
  *
  * @param {object} [overrides] - Top-level fields to replace.
  * @returns {object} A new team document.
  */
-function keyTeam(overrides = {}) {
+function alphaTeam(overrides = {}) {
   return {
     ...example('ai-platform-tenants/environments/infradev/alpha.json'),
     ...overrides
@@ -25,12 +27,12 @@ function keyTeam(overrides = {}) {
 }
 
 /**
- * OAuth team `beta` from examples/.
+ * Team `beta` from examples/: an OAuth team federated from a CDP service.
  *
  * @param {object} [overrides] - Top-level fields to replace.
  * @returns {object} A new team document.
  */
-function oauthTeam(overrides = {}) {
+function betaTeam(overrides = {}) {
   return {
     ...example('ai-platform-tenants/environments/infradev/beta.json'),
     ...overrides
@@ -74,19 +76,19 @@ function globalParams() {
 
 /**
  * The effective infradev parameters from examples/: the global file
- * overlaid by the environment's own, as Terraform reads them.
+ * deep-merged with the environment's own, as aip-checks params writes them.
  *
- * @param {object} [overrides] - Top-level fields to replace.
+ * @param {object} [overrides] - Fields to merge in, at any depth.
  * @returns {object} A new effective parameters document.
  */
 function environmentParams(overrides = {}) {
-  return {
-    ...globalParams(),
-    ...example(
+  return [
+    globalParams(),
+    example(
       'ai-platform-environments/environments/infradev/platform.tfvars.json'
     ),
-    ...overrides
-  }
+    overrides
+  ].reduce(deepMerge, {})
 }
 
 function teamPath(document) {
@@ -99,8 +101,8 @@ export {
   environmentParams,
   globalParams,
   INFRA_DIR,
-  keyTeam,
-  oauthTeam,
+  alphaTeam,
+  betaTeam,
   pin,
   registryEntry,
   teamPath
