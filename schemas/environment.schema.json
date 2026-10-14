@@ -5,12 +5,7 @@
   "description": "The effective platform parameters of one environment: ai-platform-environments/global.tfvars.json deep-merged with environments/{env}/platform.tfvars.json by aip-checks params (objects merge key by key; arrays and values replace). Codes every cloud shares sit at the top level; what is specific to a cloud sits under its key. Holds codes, never resource names.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "environment",
-    "service_code",
-    "naming",
-    "azure"
-  ],
+  "required": ["environment", "service_code", "naming", "azure"],
   "properties": {
     "$schema": {
       "type": "string"
@@ -27,10 +22,7 @@
       "description": "This environment's CCoE codes; the naming module composes every name from them and service_code.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "sub_type",
-        "environment_instance"
-      ],
+      "required": ["sub_type", "environment_instance"],
       "properties": {
         "sub_type": {
           "enum": [
@@ -87,16 +79,11 @@
         "network": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "mode"
-          ],
+          "required": ["mode"],
           "properties": {
             "mode": {
               "description": "public-minimal is the temporary Phase 1 proof, allowed only in Infradev and the Sandbox until the gate before DEV.",
-              "enum": [
-                "public-minimal",
-                "private"
-              ]
+              "enum": ["public-minimal", "private"]
             }
           }
         },
@@ -107,18 +94,10 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "id",
-              "owner",
-              "ends"
-            ],
+            "required": ["id", "owner", "ends"],
             "properties": {
               "id": {
-                "enum": [
-                  "X1",
-                  "X2",
-                  "X3"
-                ]
+                "enum": ["X1", "X2", "X3"]
               },
               "owner": {
                 "type": "string",
@@ -142,11 +121,7 @@
         "apim": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "sku",
-            "capacity",
-            "publisher"
-          ],
+          "required": ["sku", "capacity", "publisher"],
           "properties": {
             "sku": {
               "enum": [
@@ -167,10 +142,7 @@
             "publisher": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-                "name",
-                "email"
-              ],
+              "required": ["name", "email"],
               "properties": {
                 "name": {
                   "type": "string",
@@ -189,9 +161,7 @@
         "foundry": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "regions"
-          ],
+          "required": ["regions"],
           "properties": {
             "regions": {
               "description": "One Foundry account per region. The first must be UK South, which holds every project; Sweden Central holds EU Data Zone deployments (D03).",
@@ -199,10 +169,7 @@
               "minItems": 1,
               "uniqueItems": true,
               "items": {
-                "enum": [
-                  "uksouth",
-                  "swedencentral"
-                ]
+                "enum": ["uksouth", "swedencentral"]
               }
             }
           }
@@ -210,9 +177,7 @@
         "key_vault": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "soft_delete_retention_days"
-          ],
+          "required": ["soft_delete_retention_days"],
           "properties": {
             "soft_delete_retention_days": {
               "type": "integer",
@@ -255,9 +220,7 @@
         "application_insights": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "sampling_percentage"
-          ],
+          "required": ["sampling_percentage"],
           "properties": {
             "sampling_percentage": {
               "type": "number",
@@ -269,9 +232,7 @@
         "identities": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "portal_api_principal_object_id"
-          ],
+          "required": ["portal_api_principal_object_id"],
           "properties": {
             "portal_api_principal_object_id": {
               "description": "Service principal object ID of id-aip-backend-{env}: Key Vault Secrets Officer on the tenants vault and co-owner of team registrations.",
