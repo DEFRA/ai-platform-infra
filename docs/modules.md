@@ -2,8 +2,10 @@
 
 Every root reads its names from [`naming`](../modules/naming); no module, parameters file or team file
 writes a resource name. Modules state minimum provider versions; roots pin exact versions. Every module
-has `versions.tf`, `variables.tf`, `main.tf` and `outputs.tf`, and takes everything environment-specific
-as input, so moving to another environment is a parameters change only.
+has `terraform.tf`, `variables.tf`, `main.tf` and `outputs.tf` (roots add `providers.tf` and
+`backend.tf`, as the [HashiCorp style guide](https://developer.hashicorp.com/terraform/language/style)
+names them), and takes everything environment-specific as input, so moving to another environment is
+a parameters change only.
 
 ## Roots and parameters
 
