@@ -35,6 +35,11 @@
       "description": "The AI Platform's CCoE service code.",
       "const": "AIP"
     },
+    "existing_resource_group": {
+      "description": "Before the gate before DEV only: an existing CCoE-named resource group the platform and its state deploy into, in place of the two the naming module derives, where the subscription's resource groups are made for the team.",
+      "type": "string",
+      "pattern": "^[A-Z]{3}[A-Z0-9]{3}[A-Z]{3}RGP[0-9]{4}$"
+    },
     "naming": {
       "description": "This environment's CCoE codes; the naming module composes every name from them and service_code.",
       "type": "object",

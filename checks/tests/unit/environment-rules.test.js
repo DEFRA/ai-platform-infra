@@ -72,6 +72,35 @@ describe('checkEnvironmentParams', () => {
     )
   })
 
+  test('accepts an existing CCoE-named resource group in Infradev', () => {
+    const params = environmentParams({
+      existing_resource_group: 'SNDAIEAIPRGP1401'
+    })
+
+    expect(check(params)).toEqual([])
+  })
+
+  test('refuses an existing resource group past the gate before DEV', () => {
+    const entry = registryEntry({ name: 'dev', class: 'consumer-lower' })
+    const params = environmentParams({
+      environment: 'dev',
+      existing_resource_group: 'SNDAIEAIPRGP1401'
+    })
+
+    expect(check(params, entry)).toContain(
+      'an existing resource group is for Infradev and the Sandbox only, until ' +
+        'the gate before DEV'
+    )
+  })
+
+  test('refuses a resource group name that is not CCoE-coded', () => {
+    const params = environmentParams({ existing_resource_group: 'rg-aip' })
+
+    expect(check(params)).toContainEqual(
+      expect.stringContaining('/existing_resource_group must match pattern')
+    )
+  })
+
   test('refuses parameters for another environment', () => {
     expect(check(environmentParams({ environment: 'sandbox' }))).toContain(
       'environment must equal the registry entry'

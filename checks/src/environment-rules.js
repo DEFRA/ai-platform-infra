@@ -149,6 +149,16 @@ function checkEnvironmentParams({ file, params, entry, validators }) {
     }
   }
 
+  if (params.existing_resource_group && !PUBLIC_CLASSES.has(entry.class)) {
+    problems.push(
+      problem(
+        file,
+        'an existing resource group is for Infradev and the Sandbox only, ' +
+          'until the gate before DEV'
+      )
+    )
+  }
+
   if (CONSUMER_CLASSES.has(entry.class) && params.apim.sku !== 'PremiumV2') {
     problems.push(problem(file, 'consumer environments run PremiumV2 (D15)'))
   }
