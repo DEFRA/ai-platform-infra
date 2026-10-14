@@ -170,12 +170,30 @@
       }
     },
     "federation": {
+      "description": "cdp: the CDP service only; Terraform derives the issuer, subject and audience from the environment's registry entry, so the file holds nothing environment-specific. azure: the Defra tenant issuer and the principal ID of the application's user-assigned managed identity.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "host", "issuer", "subject"],
+      "required": ["name", "host"],
+      "if": { "properties": { "host": { "const": "cdp" } } },
+      "then": {
+        "required": ["service"],
+        "not": {
+          "anyOf": [{ "required": ["issuer"] }, { "required": ["subject"] }]
+        }
+      },
+      "else": {
+        "required": ["issuer", "subject"],
+        "not": { "required": ["service"] }
+      },
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,62}$" },
         "host": { "enum": ["cdp", "azure"] },
+        "service": {
+          "description": "The CDP service, as CDP names its repositories.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "maxLength": 32
+        },
         "issuer": {
           "type": "string",
           "pattern": "^https://[^\\s]+$",

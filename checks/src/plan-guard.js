@@ -1,5 +1,5 @@
 import { listFilesAt, readFileAt } from './git.js'
-import { parseTeamPath } from './team-rules.js'
+import { federationKey, parseTeamPath } from './team-rules.js'
 
 const TEAM_ADDRESS = /^module\.team\["([^"]+)"\]/
 
@@ -23,10 +23,6 @@ function teamsAt(repoDir, ref, environment) {
   }
 
   return teams
-}
-
-function federationKey(federation) {
-  return `${federation.issuer} ${federation.subject}`
 }
 
 /**

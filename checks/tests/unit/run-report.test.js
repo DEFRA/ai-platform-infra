@@ -1,5 +1,6 @@
 import {
   buildRunReport,
+  countEntraObjects,
   parseFailures,
   summariseChanges,
   withoutSensitive
@@ -79,6 +80,36 @@ describe('withoutSensitive', () => {
 
   test('returns nothing without outputs', () => {
     expect(withoutSensitive(null)).toEqual({})
+  })
+})
+
+describe('countEntraObjects', () => {
+  test('counts the applications and service principals in every module', () => {
+    const resource = (type, mode = 'managed') => ({ type, mode })
+
+    expect(
+      countEntraObjects({
+        resources: [resource('azuread_application', 'data')],
+        child_modules: [
+          {
+            resources: [resource('azurerm_api_management_api')],
+            child_modules: [
+              {
+                resources: [
+                  resource('azuread_application'),
+                  resource('azuread_service_principal'),
+                  resource('azuread_application_federated_identity_credential')
+                ]
+              }
+            ]
+          }
+        ]
+      })
+    ).toBe(2)
+  })
+
+  test('counts nothing without a plan', () => {
+    expect(countEntraObjects(undefined)).toBe(0)
   })
 })
 

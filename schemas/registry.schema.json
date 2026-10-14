@@ -95,6 +95,12 @@
           "required": ["enabled", "tenantId"],
           "properties": {
             "enabled": { "type": "boolean" },
+            "createdObjectLimit": {
+              "description": "How many Entra objects the environment's deploy identity may create, soft-deleted ones included: 250 for a principal with no Entra role unless Defra's Entra team changes it.",
+              "type": "integer",
+              "minimum": 2,
+              "default": 250
+            },
             "tenantId": {
               "type": "string",
               "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"

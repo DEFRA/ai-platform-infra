@@ -130,7 +130,7 @@ describe('explainedRemovals', () => {
     const team = oauthTeam()
     const federation = {
       ...team.oauth.federations[0],
-      subject: 'arn:aws:iam::000000000000:role/beta-api-v2'
+      service: 'beta-api-v2'
     }
     const before = new Map([['beta', team]])
     const after = new Map([

@@ -4,13 +4,20 @@ import { isCanonical } from './canonical-json.js'
 const MAX_FILE_BYTES = 60 * 1024
 const MAX_CLIENTS = 40
 const TEAM_PATH = /^environments\/([a-z][a-z0-9]{1,15})\/([^/]+)\.json$/
-const AWS_ROLE_NAME = '[A-Za-z0-9+=,.@_-]{1,64}'
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const GRANTABLE = new Set(['available', 'eligible'])
 // Every team's dedicated deployments share the environment's Foundry account
 // in a region, and Azure allows 32 model deployments per Foundry resource
 // (Microsoft Learn, Foundry Models quotas and limits, checked 14 Oct 2026).
 const MAX_DEPLOYMENTS_PER_ACCOUNT = 32
+// Entra counts every object a principal without an Entra role creates,
+// soft-deleted ones included, up to 250 (Microsoft Learn, Microsoft Entra
+// service limits, checked 14 Oct 2026). The deploy identity creates the
+// platform's API audience registration and its service principal, and the
+// same pair for each OAuth team.
+const DEFAULT_CREATED_OBJECT_LIMIT = 250
+const PLATFORM_ENTRA_OBJECTS = 2
+const ENTRA_OBJECTS_PER_OAUTH_TEAM = 2
 
 function problem(file, message) {
   return { file, message }
@@ -20,6 +27,19 @@ function parseTeamPath(path) {
   const match = TEAM_PATH.exec(path)
 
   return match ? { environment: match[1], slug: match[2] } : null
+}
+
+/**
+ * What a federation trusts: a CDP service, or an issuer and subject.
+ *
+ * @param {object} federation - One of a team file's oauth.federations.
+ * @returns {string} A key two federations share when they trust the same
+ *   workload.
+ */
+function federationKey(federation) {
+  return federation.host === 'cdp'
+    ? `CDP service ${federation.service}`
+    : `${federation.issuer} ${federation.subject}`
 }
 
 function regionFor(sku, params) {
@@ -131,26 +151,13 @@ function checkGateway(path, document) {
   return problems
 }
 
+// A CDP federation names only its service: Terraform derives the issuer,
+// subject and audience from the registry entry, so there is nothing to check
+// beyond the schema.
 function checkFederation(path, federation, entry) {
   const label = `federation ${federation.name}`
 
   if (federation.host === 'cdp') {
-    const subject = new RegExp(
-      `^arn:aws:iam::${entry.cdp.awsAccount}:role/${AWS_ROLE_NAME}$`
-    )
-
-    if (federation.issuer !== entry.cdp.issuer) {
-      return [
-        problem(path, `${label} issuer is not CDP ${entry.cdp.environment}`)
-      ]
-    }
-
-    if (!subject.test(federation.subject)) {
-      return [
-        problem(path, `${label} subject is not a role in the CDP account`)
-      ]
-    }
-
     return []
   }
 
@@ -317,13 +324,15 @@ function checkTeamFile(input) {
  * @param {string} input.environment - Environment name.
  * @param {Map<string, object>} input.models - Catalogue models by slug.
  * @param {object} input.params - The environment's effective parameters.
+ * @param {object} input.entry - The environment's registry entry.
  * @returns {Array<{file: string, message: string}>} Problems.
  */
-function checkEnvironmentTeams({ teams, environment, models, params }) {
+function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
   const problems = []
   const capacity = new Map()
   const perAccount = new Map()
-  const subjects = new Map()
+  const trusted = new Map()
+  let oauthTeams = 0
 
   for (const { path, document } of teams) {
     for (const deployment of document.deployments) {
@@ -342,18 +351,34 @@ function checkEnvironmentTeams({ teams, environment, models, params }) {
       }
     }
 
+    if (document.oauth) {
+      oauthTeams += 1
+    }
+
     for (const federation of document.oauth?.federations ?? []) {
-      const key = `${federation.issuer} ${federation.subject}`
-      const owner = subjects.get(key)
+      const key = federationKey(federation)
+      const owner = trusted.get(key)
 
       if (owner && owner !== document.team.slug) {
-        problems.push(
-          problem(path, `${federation.subject} is already trusted by ${owner}`)
-        )
+        problems.push(problem(path, `${key} is already trusted by ${owner}`))
       }
 
-      subjects.set(key, document.team.slug)
+      trusted.set(key, document.team.slug)
     }
+  }
+
+  const limit = entry.entra.createdObjectLimit ?? DEFAULT_CREATED_OBJECT_LIMIT
+  const entraObjects =
+    PLATFORM_ENTRA_OBJECTS + ENTRA_OBJECTS_PER_OAUTH_TEAM * oauthTeams
+
+  if (entraObjects > limit) {
+    problems.push(
+      problem(
+        `environments/${environment}`,
+        `${oauthTeams} OAuth teams need ${entraObjects} Entra objects from the ` +
+          `${environment} deploy identity; its limit is ${limit}`
+      )
+    )
   }
 
   for (const [slug, total] of capacity) {
@@ -390,4 +415,10 @@ function checkEnvironmentTeams({ teams, environment, models, params }) {
   return problems
 }
 
-export { checkEnvironmentTeams, checkTeamFile, parseTeamPath, regionFor }
+export {
+  checkEnvironmentTeams,
+  checkTeamFile,
+  federationKey,
+  parseTeamPath,
+  regionFor
+}

@@ -141,9 +141,36 @@ function buildRunReport(input) {
       outcome !== 'success' &&
       (failures.length === 0 || failures.some((failure) => !failure.team)),
     failures,
+    entraObjects: plan
+      ? countEntraObjects(plan.planned_values?.root_module)
+      : null,
     outputs: withoutSensitive(outputs),
     generatedAt: new Date().toISOString()
   }
+}
+
+const ENTRA_OBJECT_TYPES = new Set([
+  'azuread_application',
+  'azuread_service_principal'
+])
+
+/**
+ * How many Entra objects a state holds once its plan is applied, which
+ * count towards the deploy identity's created-object limit.
+ *
+ * @param {object | null} module - `planned_values.root_module` of a plan.
+ * @returns {number} Applications and service principals.
+ */
+function countEntraObjects(module) {
+  const own = (module?.resources ?? []).filter(
+    (resource) =>
+      resource.mode === 'managed' && ENTRA_OBJECT_TYPES.has(resource.type)
+  ).length
+
+  return (module?.child_modules ?? []).reduce(
+    (total, child) => total + countEntraObjects(child),
+    own
+  )
 }
 
 /**
@@ -159,4 +186,10 @@ function withoutSensitive(outputs) {
   )
 }
 
-export { buildRunReport, parseFailures, summariseChanges, withoutSensitive }
+export {
+  buildRunReport,
+  countEntraObjects,
+  parseFailures,
+  summariseChanges,
+  withoutSensitive
+}

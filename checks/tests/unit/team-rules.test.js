@@ -242,26 +242,37 @@ describe('checkTeamFile', () => {
     )
   })
 
-  test('refuses a CDP federation from another CDP issuer', () => {
-    const federation = {
-      ...oauthTeam().oauth.federations[0],
-      issuer:
-        'https://11111111-1111-1111-1111-111111111111.tokens.sts.global.api.aws'
-    }
-
-    expect(check(withOauth({ federations: [federation] }))).toContain(
-      'federation beta-api issuer is not CDP dev'
-    )
-  })
-
-  test('refuses a CDP role from another AWS account', () => {
+  test('refuses a CDP federation that names its own issuer or subject', () => {
     const federation = {
       ...oauthTeam().oauth.federations[0],
       subject: 'arn:aws:iam::111111111111:role/beta-api'
     }
 
-    expect(check(withOauth({ federations: [federation] }))).toContain(
-      'federation beta-api subject is not a role in the CDP account'
+    expect(check(withOauth({ federations: [federation] }))).toContainEqual(
+      expect.stringContaining('/oauth/federations/0 must NOT be valid')
+    )
+  })
+
+  test.each(['Beta_API', 'beta--api', '-beta', 'b'.repeat(33)])(
+    'refuses %s, which CDP would not accept as a service',
+    (service) => {
+      const federation = { ...oauthTeam().oauth.federations[0], service }
+
+      expect(check(withOauth({ federations: [federation] }))).toContainEqual(
+        expect.stringContaining('/oauth/federations/0/service must')
+      )
+    }
+  )
+
+  test('refuses an Azure federation without its issuer and subject', () => {
+    const federation = {
+      name: 'beta-func',
+      host: 'azure',
+      service: 'beta-func'
+    }
+
+    expect(check(withOauth({ federations: [federation] }))).toContainEqual(
+      expect.stringContaining("must have required property 'issuer'")
     )
   })
 
@@ -356,7 +367,8 @@ describe('checkEnvironmentTeams', () => {
         teams: [{ path: teamPath(document), document }],
         environment: 'sandbox',
         models,
-        params: environmentParams()
+        params: environmentParams(),
+        entry: registryEntry()
       })
     ).toEqual([
       {
@@ -382,7 +394,8 @@ describe('checkEnvironmentTeams', () => {
         teams,
         environment: 'infradev',
         models,
-        params: environmentParams()
+        params: environmentParams(),
+        entry: registryEntry()
       })
     ).toEqual([
       {
@@ -406,7 +419,8 @@ describe('checkEnvironmentTeams', () => {
         teams,
         environment: 'infradev',
         models,
-        params: environmentParams()
+        params: environmentParams(),
+        entry: registryEntry()
       })
     ).toContainEqual({
       file: 'environments/infradev',
@@ -428,15 +442,64 @@ describe('checkEnvironmentTeams', () => {
         teams,
         environment: 'infradev',
         models,
-        params: environmentParams()
+        params: environmentParams(),
+        entry: registryEntry()
       })
     ).toEqual([
       {
         file: 'environments/infradev/gamma.json',
-        message:
-          'arn:aws:iam::000000000000:role/beta-api is already trusted by beta'
+        message: 'CDP service beta-api is already trusted by beta'
       }
     ])
+  })
+
+  describe("the deploy identity's Entra objects", () => {
+    function oauthTeams(count) {
+      return Array.from({ length: count }, (_, index) => {
+        const document = oauthTeam({
+          team: { slug: `team-${index}`, serviceCode: 'ZZZ' },
+          oauth: {
+            ...oauthTeam().oauth,
+            federations: [
+              { name: 'api', host: 'cdp', service: `service-${index}` }
+            ]
+          }
+        })
+
+        return { path: teamPath(document), document }
+      })
+    }
+
+    function entraProblems(count, entra = {}) {
+      const entry = registryEntry()
+
+      return checkEnvironmentTeams({
+        teams: oauthTeams(count),
+        environment: 'infradev',
+        models: new Map(),
+        params: environmentParams(),
+        entry: { ...entry, entra: { ...entry.entra, ...entra } }
+      })
+    }
+
+    test('allows as many OAuth teams as the default limit of 250 holds', () => {
+      expect(entraProblems(124)).toEqual([])
+    })
+
+    test('refuses an OAuth team past the default limit', () => {
+      expect(entraProblems(125)).toEqual([
+        {
+          file: 'environments/infradev',
+          message:
+            '125 OAuth teams need 252 Entra objects from the infradev deploy ' +
+            'identity; its limit is 250'
+        }
+      ])
+    })
+
+    test("follows the registry entry's limit", () => {
+      expect(entraProblems(3, { createdObjectLimit: 7 })).toHaveLength(1)
+    })
   })
 })
 

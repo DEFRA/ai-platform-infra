@@ -126,7 +126,8 @@ function checkWholeEnvironment(repoDir, ref, environment, context) {
       teams,
       environment,
       models: context.models,
-      params
+      params,
+      entry
     })
   )
 
