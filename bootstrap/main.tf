@@ -2,38 +2,6 @@
 # Contributor and User Access Administrator) and Azure CLI sign-in.
 # Runbook: docs/bootstrap.md.
 
-terraform {
-  required_version = ">= 1.16.0, < 2.0.0"
-
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "5.9.0"
-    }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "3.10.0"
-    }
-  }
-}
-
-provider "azurerm" {
-  storage_use_azuread = true
-
-  resource_providers_to_register = [
-    "Microsoft.ApiManagement",
-    "Microsoft.CognitiveServices",
-    "Microsoft.Insights",
-    "Microsoft.KeyVault",
-    "Microsoft.OperationalInsights",
-    "Microsoft.Storage",
-  ]
-
-  features {}
-}
-
-provider "azuread" {}
-
 data "azurerm_client_config" "operator" {}
 
 data "azuread_application" "deploy" {
