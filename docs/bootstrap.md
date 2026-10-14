@@ -13,7 +13,9 @@ owns every change.
 3. You know the client ID of the existing app registration that is `id-aip-deploy-{env}` (D5); it is not
    committed anywhere public.
 4. Decide `grant_graph_application_owned_by`: it needs an Entra role that can grant application
-   permissions. Without it, OAuth teams (M4) cannot be created.
+   permissions. Without it, OAuth teams (M4) cannot be created, and a tenants apply cannot permanently
+   delete the registrations it removes, which then count towards the deploy identity's Entra limit for
+   30 days.
 
 ## Run
 
