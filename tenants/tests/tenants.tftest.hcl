@@ -58,6 +58,11 @@ variables {
   environment   = "infradev"
   release       = "v0.5.0"
   entra_enabled = true
+  cdp = {
+    issuer     = "https://00000000-0000-0000-0000-000000000000.tokens.sts.global.api.aws"
+    awsAccount = "000000000000"
+    audience   = "api://AzureADTokenExchange"
+  }
   platform_state = {
     resource_group_name  = "SNDAIPINFRGP1402"
     storage_account_name = "sndaipinfsto1401"
@@ -101,8 +106,7 @@ variables {
         federations = [{
           name    = "beta-api"
           host    = "cdp"
-          issuer  = "https://00000000-0000-0000-0000-000000000000.tokens.sts.global.api.aws"
-          subject = "arn:aws:iam::000000000000:role/beta-api"
+          service = "beta-api"
         }]
         externalClients = []
         secretsAllowed  = true
@@ -143,6 +147,15 @@ run "applies_a_key_team_and_an_oauth_team" {
   }
 
   assert {
+    condition = output.teams.beta.registration.federations["beta-api"] == {
+      issuer   = "https://00000000-0000-0000-0000-000000000000.tokens.sts.global.api.aws"
+      subject  = "arn:aws:iam::000000000000:role/beta-api"
+      audience = "api://AzureADTokenExchange"
+    }
+    error_message = "a CDP federation takes its issuer, AWS account and audience from the registry entry"
+  }
+
+  assert {
     condition     = output.teams.alpha.api.url == "https://apim-aip-infradev.azure-api.net/alpha"
     error_message = "each team API sits at /{slug}"
   }
@@ -173,6 +186,27 @@ run "refuses_a_grant_that_is_not_a_team_deployment" {
     teams = {
       alpha = merge(var.teams.alpha, {
         gateway = merge(var.teams.alpha.gateway, { allowedDeployments = ["gpt-4o"] })
+      })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_a_cdp_federation_that_names_its_own_subject" {
+  command = plan
+
+  variables {
+    teams = {
+      beta = merge(var.teams.beta, {
+        oauth = merge(var.teams.beta.oauth, {
+          federations = [{
+            name    = "beta-api"
+            host    = "cdp"
+            service = "beta-api"
+            subject = "arn:aws:iam::111111111111:role/beta-api"
+          }]
+        })
       })
     }
   }

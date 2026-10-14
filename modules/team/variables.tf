@@ -50,6 +50,15 @@ variable "catalogue" {
   type        = any
 }
 
+variable "cdp" {
+  description = "The environment's CDP trust from its registry entry: the issuer, AWS account and audience every CDP federation uses."
+  type = object({
+    issuer     = string
+    awsAccount = string
+    audience   = string
+  })
+}
+
 variable "owner_object_ids" {
   description = "Owners of the team registration: the deploy identity and the Portal API identity."
   type        = list(string)

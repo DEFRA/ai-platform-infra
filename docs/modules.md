@@ -9,12 +9,12 @@ a parameters change only.
 
 ## Roots and parameters
 
-| Root        | State               | Reads                                                                       |
-| ----------- | ------------------- | --------------------------------------------------------------------------- |
-| `names`     | None (local)        | `config_files`: the layered parameters below                                |
-| `bootstrap` | `bootstrap.tfstate` | `config_files` (through `names`), plus the deploy identity's inputs         |
-| `platform`  | `platform.tfstate`  | `-var-file` global, then the environment's file; `release`, `entra_enabled` |
-| `tenants`   | `tenants.tfstate`   | The platform state's outputs, and the team files bundled by `aip-checks`    |
+| Root        | State               | Reads                                                                                                      |
+| ----------- | ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `names`     | None (local)        | `config_files`: the layered parameters below                                                               |
+| `bootstrap` | `bootstrap.tfstate` | `config_files` (through `names`), plus the deploy identity's inputs                                        |
+| `platform`  | `platform.tfstate`  | `-var-file` global, then the environment's file; `release`, `entra_enabled`                                |
+| `tenants`   | `tenants.tfstate`   | The platform state's outputs, the team files bundled by `aip-checks`, and the registry entry's `cdp` trust |
 
 Parameters are layered in `ai-platform-environments`: `global.tfvars.json` holds what every environment
 shares (location, service code, API Management publisher, default Foundry regions) and

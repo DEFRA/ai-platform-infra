@@ -38,6 +38,22 @@ locals {
     aip-source-sha   = var.source_commit.sha
   })
 
+  # A CDP federation names only its service; the environment's registry
+  # entry supplies the rest, so a team file is the same in every environment.
+  federations = local.oauth ? [
+    for federation in var.team.oauth.federations : federation.host == "cdp" ? {
+      name     = federation.name
+      issuer   = var.cdp.issuer
+      subject  = "arn:aws:iam::${var.cdp.awsAccount}:role/${federation.service}"
+      audience = var.cdp.audience
+      } : {
+      name     = federation.name
+      issuer   = federation.issuer
+      subject  = federation.subject
+      audience = "api://AzureADTokenExchange"
+    }
+  ] : []
+
   client_ids = local.oauth ? concat(
     [module.registration[0].client_id],
     [for client in var.team.oauth.externalClients : client.clientId],
@@ -78,13 +94,7 @@ module "registration" {
   owner_object_ids = var.owner_object_ids
   team_slug        = local.slug
   environment      = var.environment
-  federations = [
-    for federation in var.team.oauth.federations : {
-      name    = federation.name
-      issuer  = federation.issuer
-      subject = federation.subject
-    }
-  ]
+  federations      = local.federations
 }
 
 

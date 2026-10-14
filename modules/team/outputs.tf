@@ -25,6 +25,7 @@ output "resources" {
       client_id                   = module.registration[0].client_id
       object_id                   = module.registration[0].object_id
       service_principal_object_id = module.registration[0].service_principal_object_id
+      federations                 = module.registration[0].federations
     } : null
   }
 }

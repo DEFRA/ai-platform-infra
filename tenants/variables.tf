@@ -12,6 +12,15 @@ variable "entra_enabled" {
   type        = bool
 }
 
+variable "cdp" {
+  description = "The registry entry's cdp block: the issuer, AWS account and audience of this environment's CDP Web Identity trust."
+  type = object({
+    issuer     = string
+    awsAccount = string
+    audience   = string
+  })
+}
+
 variable "platform_state" {
   description = "Where the platform state is, from the names root."
   type = object({
@@ -65,8 +74,9 @@ variable "teams" {
       federations = list(object({
         name    = string
         host    = string
-        issuer  = string
-        subject = string
+        service = optional(string)
+        issuer  = optional(string)
+        subject = optional(string)
       }))
       externalClients = list(object({
         name     = string
@@ -136,6 +146,17 @@ variable "teams" {
       )
     ])
     error_message = "At most 20 federations and 40 clients per team."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for team in var.teams : [
+        for federation in try(team.oauth.federations, []) : federation.host == "cdp"
+        ? federation.service != null && federation.issuer == null && federation.subject == null
+        : federation.host == "azure" && federation.service == null && federation.issuer != null && federation.subject != null
+      ]
+    ]))
+    error_message = "A CDP federation names only its service; an Azure federation names its issuer and subject."
   }
 
   validation {

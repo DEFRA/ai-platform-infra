@@ -9,11 +9,12 @@ variable "owner_object_ids" {
 }
 
 variable "federations" {
-  description = "The team file's oauth.federations; at most 20."
+  description = "The team's federated credentials, resolved by the team module; at most 20."
   type = list(object({
-    name    = string
-    issuer  = string
-    subject = string
+    name     = string
+    issuer   = string
+    subject  = string
+    audience = string
   }))
 
   validation {

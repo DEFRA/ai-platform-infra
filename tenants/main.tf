@@ -59,6 +59,7 @@ module "team" {
   environment   = var.environment
   names         = module.naming.team
   catalogue     = local.catalogue
+  cdp           = var.cdp
   tags          = local.tags
 
   platform = {

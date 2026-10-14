@@ -31,5 +31,5 @@ resource "azuread_application_federated_identity_credential" "federation" {
   description    = "Federated workload of AI Platform team ${var.team_slug}."
   issuer         = each.value.issuer
   subject        = each.value.subject
-  audiences      = ["api://AzureADTokenExchange"]
+  audiences      = [each.value.audience]
 }
