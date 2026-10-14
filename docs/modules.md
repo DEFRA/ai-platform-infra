@@ -21,7 +21,8 @@ shares (location, service code, API Management publisher, default Foundry region
 `environments/{env}/platform.tfvars.json` holds the environment's own. Terraform reads them in that order
 with `-var-file`, so an environment overrides a whole top-level key; `aip-checks` validates the merged
 result against [`environment.schema.json`](../schemas/environment.schema.json). No value is interpolated:
-names come from the codes through `naming`.
+names come from the codes through `naming`. Before the gate before DEV, `existing_resource_group` may name
+a CCoE resource group made in advance; the platform and its state then go into it.
 
 Diagnostic settings for every platform resource, and the subscription activity log, are in one place:
 [`platform/diagnostics.tf`](../platform/diagnostics.tf).
