@@ -25,7 +25,8 @@ schema-valid and are the test fixtures for the checks and the Portal API.
   identical bytes.
 - Under 60 KB, because a dispatch input holds at most 65,535 characters.
 - No secret and no personal data: inputs and files are readable by everyone who can read the
-  repository. `updatedBy` and `requestedBy` are opaque IDs, never names or email addresses.
+  repository. `updatedBy` and `requestedBy` name exactly one identity and never a name or email
+  address (see [traceability](#traceability)).
 - No resource names. The Terraform `naming` module derives every name from CCoE's pattern and the
   environment's codes; see [traceability](#traceability).
 
@@ -64,16 +65,16 @@ to `sha` in `ai-platform-infra`. `previousRelease` equals the release it replace
 The Portal API, and the release workflow for `autoPin` environments, dispatch `submit.yml` on `main`
 of the state repository with `X-GitHub-Api-Version: 2026-03-10`, which returns the run ID. Inputs:
 
-| Input               | Value                                                                            |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `action`            | `write` (create or replace the file), `remove` (delete it) or `abandon`          |
-| `environment`       | Registry entry name                                                              |
-| `path`              | `environments/{env}/{slug}.json` or `environments/{env}/platform.json`           |
-| `document`          | The whole canonical document for `write`; empty otherwise                        |
-| `operation_id`      | `^[a-z0-9][a-z0-9-]{7,63}$`; also the branch name `op/{operation_id}`            |
-| `expected_revision` | The `revision` (team) the caller last read, `0` for a new file; ignored for pins |
-| `requested_by`      | Opaque ID                                                                        |
-| `trace_parent`      | Optional W3C `traceparent`, carried into the commit and the run report           |
+| Input               | Value                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `action`            | `write` (create or replace the file), `remove` (delete it) or `abandon`                                      |
+| `environment`       | Registry entry name                                                                                          |
+| `path`              | `environments/{env}/{slug}.json` or `environments/{env}/platform.json`                                       |
+| `document`          | The whole canonical document for `write`; empty otherwise                                                    |
+| `operation_id`      | `^[a-z0-9][a-z0-9-]{7,63}$`; also the branch name `op/{operation_id}`                                        |
+| `expected_revision` | The `revision` (team) the caller last read, `0` for a new file; ignored for pins                             |
+| `requested_by`      | `entra:{object ID}` of the signed-in person; replaced by `github:{user ID}` when a person dispatches the run |
+| `trace_parent`      | Optional W3C `traceparent`, carried into the commit and the run report                                       |
 
 `remove` exists for the D14 revert of a newly added team file and for deleting a team; it is a
 `write` of no file.
@@ -158,6 +159,12 @@ Names are never written by people, yet every resource can be traced to the reque
   changed the team's file, so tags change only when that team changes.
 - **Linked.** Operation ID: MongoDB operation → branch and trailer → pull request → squash commit →
   GitHub Deployment and run report → tags. `traceparent` follows the same path for design G.
+- **Attributed.** `Requested-By`, `updatedBy` and `requestedBy` hold one principal: `entra:{oid}`
+  for a person in the portal (the immutable Entra object ID the portal keys users on with `tid`),
+  `github:{user ID}` for a person who dispatches `submit.yml` by hand (taken from the run's
+  authenticated actor, never from the input) and `app:{slug}` for automation. Each resolves to one
+  identity through Microsoft Graph, the GitHub API or the App registration; no name or email address
+  is written to Git.
 
 ## Schema evolution
 

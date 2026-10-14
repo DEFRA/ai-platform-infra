@@ -67,12 +67,26 @@ describe('loadValidators', () => {
     )
   })
 
-  test('refuses an email address as updatedBy', () => {
-    const team = keyTeam({ updatedBy: 'someone@example.com' })
+  test.each([
+    'someone@example.com',
+    '00000000-0000-0000-0000-000000000001',
+    'entra:not-a-guid',
+    'github:octocat',
+    'unknown'
+  ])('refuses %s as updatedBy', (updatedBy) => {
+    const team = keyTeam({ updatedBy })
 
     expect(validators.team(team)).toContainEqual(
       expect.stringContaining('/updatedBy must match pattern')
     )
+  })
+
+  test.each([
+    'entra:0f8fad5b-d9cb-469f-a165-70867728950e',
+    'github:583231',
+    'app:ai-platform-backend'
+  ])('accepts %s as updatedBy, one identity of a known kind', (updatedBy) => {
+    expect(validators.team(keyTeam({ updatedBy }))).toEqual([])
   })
 
   test.each(['Alpha', 'a', 'alpha-', '1alpha', 'a'.repeat(25)])(
@@ -85,6 +99,12 @@ describe('loadValidators', () => {
       )
     }
   )
+
+  test('refuses a pin requested by free text', () => {
+    expect(
+      validators.pin(pin({ requestedBy: 'release-please' }))
+    ).toContainEqual(expect.stringContaining('/requestedBy must match pattern'))
+  })
 
   test('refuses a pin whose release is neither a tag nor a SHA', () => {
     expect(validators.pin(pin({ release: 'main' }))).toContainEqual(

@@ -36,9 +36,9 @@
       ]
     },
     "requestedBy": {
-      "description": "An opaque identifier: an Entra object ID, or release-please for automatic pins.",
+      "description": "Exactly one identity, never a name or an email address: entra:{object ID} for a person signed in to the portal, github:{user ID} for an engineer who dispatched the change, app:{slug} for automation. Automatic pins are app:{slug} of the release App.",
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+      "pattern": "^(entra:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|github:[1-9][0-9]{0,19}|app:[a-z][a-z0-9-]{0,38})$"
     },
     "operationId": {
       "type": "string",
