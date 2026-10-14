@@ -82,7 +82,7 @@ variables {
         limits             = { tokensPerMinute = 1000, requestsPerMinute = 60 }
       }
       operationId = "000000000000000000000001"
-      updatedBy   = "00000000-0000-0000-0000-000000000001"
+      updatedBy   = "entra:00000000-0000-0000-0000-000000000001"
       updatedAt   = "2026-10-13T00:00:00.000Z"
     }
     beta = {
@@ -108,7 +108,7 @@ variables {
         secretsAllowed  = true
       }
       operationId = "000000000000000000000002"
-      updatedBy   = "00000000-0000-0000-0000-000000000001"
+      updatedBy   = "entra:00000000-0000-0000-0000-000000000001"
       updatedAt   = "2026-10-13T00:00:00.000Z"
     }
   }
