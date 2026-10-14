@@ -1,6 +1,6 @@
 output "names" {
   description = "Every platform resource name for the environment."
-  value = merge(local.coded_names, local.logical_names, {
+  value = merge(local.coded_names, local.existing_groups, local.logical_names, {
     state_container = "tfstate"
     apim_logger     = "appi-${local.service}"
     diagnostics     = "diag-${local.service}-law"

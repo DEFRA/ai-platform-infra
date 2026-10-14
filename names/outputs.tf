@@ -10,6 +10,11 @@ output "service_code" {
   value = local.config.service_code
 }
 
+output "existing_resource_group" {
+  description = "Whether the platform and its state use a resource group made in advance."
+  value       = try(local.config.existing_resource_group, null) != null
+}
+
 output "names" {
   value = module.naming.names
 }

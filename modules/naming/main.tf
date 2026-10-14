@@ -56,6 +56,13 @@ locals {
     )
   }
 
+  # A resource group made for the team in advance replaces both derived
+  # groups until the gate before DEV.
+  existing_groups = var.existing_resource_group == null ? {} : {
+    resource_group_platform = var.existing_resource_group
+    resource_group_state    = var.existing_resource_group
+  }
+
   # CCoE has no type code for these; design D allows the logical label,
   # and the gap is raised with CCoE (docs/modules.md).
   service = lower(var.codes.service_code)

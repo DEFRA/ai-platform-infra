@@ -39,16 +39,28 @@ locals {
 }
 
 resource "azurerm_resource_group" "state" {
+  count = module.names.existing_resource_group ? 0 : 1
+
   name     = local.names.resource_group_state
   location = local.location
   tags     = local.tags
+}
+
+# With a resource group made in advance, the deploy identity's role
+# administration stays inside it rather than the subscription.
+locals {
+  rbac_scope = (
+    module.names.existing_resource_group
+    ? "${local.subscription_id}/resourceGroups/${local.names.resource_group_state}"
+    : local.subscription_id
+  )
 }
 
 # Public endpoint with Entra authentication only, until private runners
 # exist (named exception X2); shared keys are off.
 resource "azurerm_storage_account" "state" {
   name                              = local.names.storage_account_state
-  resource_group_name               = azurerm_resource_group.state.name
+  resource_group_name               = local.names.resource_group_state
   location                          = local.location
   account_tier                      = "Standard"
   account_replication_type          = "ZRS"
@@ -106,7 +118,7 @@ resource "azurerm_role_assignment" "operator_state" {
 resource "azurerm_role_assignment" "deploy_rbac_administrator" {
   count = var.grant_role_assignment_admin ? 1 : 0
 
-  scope              = local.subscription_id
+  scope              = local.rbac_scope
   role_definition_id = local.roles.rbac_administrator
   principal_id       = data.azuread_service_principal.deploy.object_id
   principal_type     = "ServicePrincipal"

@@ -28,6 +28,28 @@ run "federates_exactly_the_two_state_repositories" {
   }
 }
 
+run "keeps_state_and_role_administration_in_an_existing_resource_group" {
+  command = plan
+
+  variables {
+    config_files = [
+      "../examples/ai-platform-environments/global.tfvars.json",
+      "../examples/ai-platform-environments/environments/infradev/platform.tfvars.json",
+      "tests/existing-resource-group.tfvars.json",
+    ]
+  }
+
+  assert {
+    condition     = length(azurerm_resource_group.state) == 0 && azurerm_storage_account.state.resource_group_name == "SNDAIEAIPRGP1401"
+    error_message = "the state account goes into the existing resource group, which bootstrap does not create"
+  }
+
+  assert {
+    condition     = endswith(azurerm_role_assignment.deploy_rbac_administrator[0].scope, "/resourceGroups/SNDAIEAIPRGP1401")
+    error_message = "role administration is scoped to the existing resource group"
+  }
+}
+
 run "refuses_a_missing_state_repository" {
   command = plan
 

@@ -34,6 +34,17 @@ variable "naming" {
   })
 }
 
+variable "existing_resource_group" {
+  description = "Before the gate before DEV only: an existing CCoE-named resource group the platform and its state use instead of the two this module derives."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.existing_resource_group == null || can(regex("^[A-Z]{3}[A-Z0-9]{3}[A-Z]{3}RGP[0-9]{4}$", var.existing_resource_group))
+    error_message = "existing_resource_group must be a CCoE resource group name, such as SNDAIEAIPRGP1401."
+  }
+}
+
 variable "network" {
   type = object({
     mode = string

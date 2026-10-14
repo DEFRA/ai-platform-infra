@@ -54,7 +54,7 @@ run "plans_the_public_minimal_platform" {
   command = plan
 
   assert {
-    condition     = azurerm_resource_group.platform.name == "SNDAIPINFRGP1401"
+    condition     = azurerm_resource_group.platform[0].name == "SNDAIPINFRGP1401"
     error_message = "the platform resource group must take its CCoE name"
   }
 
@@ -69,7 +69,7 @@ run "plans_the_public_minimal_platform" {
   }
 
   assert {
-    condition     = azurerm_resource_group.platform.tags["aip-release"] == "v0.4.0"
+    condition     = azurerm_resource_group.platform[0].tags["aip-release"] == "v0.4.0"
     error_message = "every platform resource records the pinned release"
   }
 
@@ -99,6 +99,29 @@ run "plans_the_public_minimal_platform" {
   assert {
     condition     = output.naming.service_code == "AIP"
     error_message = "the tenants root's naming codes include the service code"
+  }
+}
+
+run "deploys_into_an_existing_resource_group" {
+  command = plan
+
+  variables {
+    existing_resource_group = "SNDAIEAIPRGP1401"
+  }
+
+  assert {
+    condition     = length(azurerm_resource_group.platform) == 0
+    error_message = "the platform does not create a resource group made in advance"
+  }
+
+  assert {
+    condition     = output.resource_group_name == "SNDAIEAIPRGP1401"
+    error_message = "every platform resource goes into the existing resource group"
+  }
+
+  assert {
+    condition     = module.apim.name == "apim-aip-infradev"
+    error_message = "resources inside it keep their derived names"
   }
 }
 

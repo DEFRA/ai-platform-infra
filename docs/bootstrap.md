@@ -5,6 +5,11 @@ identity's federated credentials and its missing roles. Run by a platform engine
 Contributor and User Access Administrator, signed in with the Azure CLI. After this the deploy identity
 owns every change.
 
+Where the subscription's resource groups are made for the team (SND1 before the gate before DEV), set
+`existing_resource_group` in the environment's parameters: the platform and its state then go into that
+group, and you need Contributor and User Access Administrator (or Role Based Access Control
+Administrator) on the group rather than the subscription.
+
 ## Before you start
 
 1. The state repositories are internal (D8). Do not apply before they are: apply logs show resource IDs.

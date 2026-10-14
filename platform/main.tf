@@ -7,6 +7,8 @@ module "naming" {
   codes           = local.codes
   location        = var.location
   foundry_regions = var.foundry_regions
+
+  existing_resource_group = var.existing_resource_group
 }
 
 module "roles" {
@@ -29,9 +31,24 @@ locals {
 }
 
 resource "azurerm_resource_group" "platform" {
+  count = var.existing_resource_group == null ? 1 : 0
+
   name     = local.names.resource_group_platform
   location = var.location
   tags     = local.tags
+}
+
+data "azurerm_resource_group" "existing" {
+  count = var.existing_resource_group == null ? 0 : 1
+
+  name = var.existing_resource_group
+}
+
+locals {
+  resource_group_name = one(concat(
+    azurerm_resource_group.platform[*].name,
+    data.azurerm_resource_group.existing[*].name,
+  ))
 }
 
 module "log_analytics" {
@@ -39,7 +56,7 @@ module "log_analytics" {
 
   workspace_name            = local.names.log_analytics_workspace
   application_insights_name = local.names.application_insights
-  resource_group_name       = azurerm_resource_group.platform.name
+  resource_group_name       = local.resource_group_name
   location                  = var.location
   retention_in_days         = var.log_analytics.retention_in_days
   daily_quota_gb            = var.log_analytics.daily_quota_gb
@@ -61,7 +78,7 @@ module "apim" {
   source = "../modules/apim"
 
   name                                   = local.names.api_management
-  resource_group_name                    = azurerm_resource_group.platform.name
+  resource_group_name                    = local.resource_group_name
   location                               = var.location
   sku                                    = var.apim.sku
   capacity                               = var.apim.capacity
@@ -90,7 +107,7 @@ module "key_vault" {
   for_each = local.key_vaults
 
   name                       = local.names["key_vault_${each.key}"]
-  resource_group_name        = azurerm_resource_group.platform.name
+  resource_group_name        = local.resource_group_name
   location                   = var.location
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   soft_delete_retention_days = var.key_vault.soft_delete_retention_days
@@ -127,7 +144,7 @@ module "foundry" {
   for_each = toset(var.foundry_regions)
 
   name                       = local.names.foundry_accounts[each.key]
-  resource_group_name        = azurerm_resource_group.platform.name
+  resource_group_name        = local.resource_group_name
   location                   = each.key
   projects_enabled           = each.key == var.foundry_regions[0]
   public_network_access      = local.public

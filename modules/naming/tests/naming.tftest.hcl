@@ -83,6 +83,34 @@ run "rejects_a_region_without_a_ccoe_code" {
   expect_failures = [var.location]
 }
 
+run "uses_an_existing_resource_group_for_the_platform_and_its_state" {
+  command = plan
+
+  variables {
+    existing_resource_group = "SNDAIEAIPRGP1401"
+  }
+
+  assert {
+    condition     = output.names.resource_group_platform == "SNDAIEAIPRGP1401" && output.names.resource_group_state == "SNDAIEAIPRGP1401"
+    error_message = "an existing resource group holds the platform and its state"
+  }
+
+  assert {
+    condition     = output.names.storage_account_state == "sndaipinfsto1401"
+    error_message = "resources inside it keep their derived names"
+  }
+}
+
+run "refuses_a_resource_group_name_that_is_not_ccoe_coded" {
+  command = plan
+
+  variables {
+    existing_resource_group = "rg-aip"
+  }
+
+  expect_failures = [var.existing_resource_group]
+}
+
 run "refuses_no_foundry_region" {
   command = plan
 

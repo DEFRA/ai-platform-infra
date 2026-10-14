@@ -14,4 +14,6 @@ module "naming" {
   codes           = local.codes
   location        = local.config.location
   foundry_regions = local.config.foundry_regions
+
+  existing_resource_group = try(local.config.existing_resource_group, null)
 }
