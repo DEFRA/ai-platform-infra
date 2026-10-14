@@ -1,0 +1,61 @@
+variable "team" {
+  description = "One validated team file (schemas/team.schema.json)."
+  type        = any
+}
+
+variable "source_commit" {
+  description = "The commit and operation that last changed the team's file."
+  type = object({
+    sha          = string
+    operation_id = string
+  })
+}
+
+variable "environment" {
+  type = string
+}
+
+variable "names" {
+  description = "Team format strings from the naming module."
+  type = object({
+    project                   = string
+    deployment                = string
+    api                       = string
+    registration              = string
+    clients_named_value       = string
+    access_window_named_value = string
+  })
+}
+
+variable "platform" {
+  description = "Platform outputs read from the platform state."
+  type = object({
+    api_management = object({
+      name                = string
+      resource_group_name = string
+      gateway_url         = string
+    })
+    foundry_accounts = map(object({
+      id              = string
+      name            = string
+      openai_endpoint = string
+      primary         = bool
+    }))
+    authorise_fragment = string
+  })
+}
+
+variable "catalogue" {
+  description = "Catalogue models by slug at the pinned release."
+  type        = any
+}
+
+variable "owner_object_ids" {
+  description = "Owners of the team registration: the deploy identity and the Portal API identity."
+  type        = list(string)
+}
+
+
+variable "tags" {
+  type = map(string)
+}
