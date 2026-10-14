@@ -8,7 +8,6 @@
     Access window entries: clientId|status|validFrom|expiresAt, separated by ";",
     where status is active or suspended and expiresAt may be untilRevoked.
     GET /whoami passes steps 1 and 2 only, so a client can check its setup.
-    GET /whoami passes steps 1 and 2 only, so a client can check its setup.
   -->
   <validate-azure-ad-token tenant-id="{{${tenant_id_named_value}}}" header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="invalid-token" output-token-variable-name="aipToken">
     <audiences>

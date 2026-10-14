@@ -13,8 +13,11 @@ variable "oidc_subject_prefixes" {
   type        = map(string)
 
   validation {
-    condition     = alltrue([for prefix in values(var.oidc_subject_prefixes) : can(regex("^repo:DEFRA@[0-9]+/ai-platform-(tenants|deployments)@[0-9]+$", prefix))])
-    error_message = "Expected repo:DEFRA@{org-id}/ai-platform-tenants@{repo-id} and the deployments equivalent."
+    condition = (
+      toset(keys(var.oidc_subject_prefixes)) == toset(["ai-platform-tenants", "ai-platform-deployments"]) &&
+      alltrue([for repo, prefix in var.oidc_subject_prefixes : can(regex("^repo:DEFRA@[0-9]+/${repo}@[0-9]+$", prefix))])
+    )
+    error_message = "Expected exactly ai-platform-tenants and ai-platform-deployments, each with its own repo:DEFRA@{org-id}/{repo}@{repo-id} prefix."
   }
 }
 

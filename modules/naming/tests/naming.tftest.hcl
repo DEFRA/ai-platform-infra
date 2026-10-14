@@ -82,3 +82,23 @@ run "rejects_a_region_without_a_ccoe_code" {
 
   expect_failures = [var.location]
 }
+
+run "refuses_no_foundry_region" {
+  command = plan
+
+  variables {
+    foundry_regions = []
+  }
+
+  expect_failures = [var.foundry_regions]
+}
+
+run "refuses_a_foundry_region_listed_twice" {
+  command = plan
+
+  variables {
+    foundry_regions = ["uksouth", "uksouth"]
+  }
+
+  expect_failures = [var.foundry_regions]
+}

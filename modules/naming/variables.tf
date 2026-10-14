@@ -54,4 +54,9 @@ variable "foundry_regions" {
     ])
     error_message = "foundry_regions holds a region with no short name."
   }
+
+  validation {
+    condition     = length(var.foundry_regions) > 0 && length(distinct(var.foundry_regions)) == length(var.foundry_regions)
+    error_message = "foundry_regions needs at least one region, each listed once."
+  }
 }
