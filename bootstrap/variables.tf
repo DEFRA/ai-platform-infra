@@ -1,6 +1,6 @@
-variable "config_files" {
-  description = "As the names root: global.tfvars.json, then environments/{env}/platform.tfvars.json."
-  type        = list(string)
+variable "params_file" {
+  description = "As the names root: the environment's parameters from aip-checks params."
+  type        = string
 }
 
 variable "deploy_client_id" {

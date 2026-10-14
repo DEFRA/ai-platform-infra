@@ -5,10 +5,10 @@ module "naming" {
 
   environment     = var.environment
   codes           = local.codes
-  location        = var.location
-  foundry_regions = var.foundry_regions
+  location        = var.azure.location
+  foundry_regions = var.azure.foundry.regions
 
-  existing_resource_group = var.existing_resource_group
+  existing_resource_group = var.azure.existing_resource_group
 }
 
 module "roles" {
@@ -19,7 +19,7 @@ locals {
   codes  = merge(var.naming, { service_code = var.service_code })
   names  = module.naming.names
   roles  = module.roles.ids
-  public = var.network.mode == "public-minimal"
+  public = var.azure.network.mode == "public-minimal"
 
   tags = {
     aip-environment  = var.environment
@@ -31,17 +31,17 @@ locals {
 }
 
 resource "azurerm_resource_group" "platform" {
-  count = var.existing_resource_group == null ? 1 : 0
+  count = var.azure.existing_resource_group == null ? 1 : 0
 
   name     = local.names.resource_group_platform
-  location = var.location
+  location = var.azure.location
   tags     = local.tags
 }
 
 data "azurerm_resource_group" "existing" {
-  count = var.existing_resource_group == null ? 0 : 1
+  count = var.azure.existing_resource_group == null ? 0 : 1
 
-  name = var.existing_resource_group
+  name = var.azure.existing_resource_group
 }
 
 locals {
@@ -57,10 +57,10 @@ module "log_analytics" {
   workspace_name            = local.names.log_analytics_workspace
   application_insights_name = local.names.application_insights
   resource_group_name       = local.resource_group_name
-  location                  = var.location
-  retention_in_days         = var.log_analytics.retention_in_days
-  daily_quota_gb            = var.log_analytics.daily_quota_gb
-  sampling_percentage       = var.application_insights.sampling_percentage
+  location                  = var.azure.location
+  retention_in_days         = var.azure.log_analytics.retention_in_days
+  daily_quota_gb            = var.azure.log_analytics.daily_quota_gb
+  sampling_percentage       = var.azure.application_insights.sampling_percentage
   public_network_access     = local.public
   tags                      = local.tags
 }
@@ -79,15 +79,15 @@ module "apim" {
 
   name                                   = local.names.api_management
   resource_group_name                    = local.resource_group_name
-  location                               = var.location
-  sku                                    = var.apim.sku
-  capacity                               = var.apim.capacity
-  publisher_name                         = var.apim_publisher.name
-  publisher_email                        = var.apim_publisher.email
+  location                               = var.azure.location
+  sku                                    = var.azure.apim.sku
+  capacity                               = var.azure.apim.capacity
+  publisher_name                         = var.azure.apim.publisher.name
+  publisher_email                        = var.azure.apim.publisher.email
   public_network_access                  = local.public
   application_insights_id                = module.log_analytics.application_insights_id
   application_insights_connection_string = module.log_analytics.application_insights_connection_string
-  sampling_percentage                    = var.application_insights.sampling_percentage
+  sampling_percentage                    = var.azure.application_insights.sampling_percentage
   tenant_id                              = data.azurerm_client_config.current.tenant_id
   api_audience_client_id                 = var.entra_enabled ? module.api_audience[0].client_id : null
   telemetry_role_definition_id           = local.roles.monitoring_metrics_publisher
@@ -108,9 +108,9 @@ module "key_vault" {
 
   name                       = local.names["key_vault_${each.key}"]
   resource_group_name        = local.resource_group_name
-  location                   = var.location
+  location                   = var.azure.location
   tenant_id                  = data.azurerm_client_config.current.tenant_id
-  soft_delete_retention_days = var.key_vault.soft_delete_retention_days
+  soft_delete_retention_days = var.azure.key_vault.soft_delete_retention_days
   public_network_access      = local.public
   role_assignments           = each.value
   tags                       = local.tags
@@ -132,7 +132,7 @@ locals {
     }
     tenants = {
       portal-api-secrets-officer = {
-        principal_id       = var.identities.portal_api_principal_object_id
+        principal_id       = var.azure.identities.portal_api_principal_object_id
         role_definition_id = local.roles.key_vault_secrets_officer
       }
     }
@@ -141,12 +141,12 @@ locals {
 
 module "foundry" {
   source   = "../modules/foundry-account"
-  for_each = toset(var.foundry_regions)
+  for_each = toset(var.azure.foundry.regions)
 
   name                       = local.names.foundry_accounts[each.key]
   resource_group_name        = local.resource_group_name
   location                   = each.key
-  projects_enabled           = each.key == var.foundry_regions[0]
+  projects_enabled           = each.key == var.azure.foundry.regions[0]
   public_network_access      = local.public
   gateway_principal_id       = module.apim.principal_id
   gateway_role_definition_id = local.roles.foundry_user

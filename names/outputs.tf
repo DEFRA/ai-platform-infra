@@ -3,7 +3,7 @@ output "environment" {
 }
 
 output "location" {
-  value = local.config.location
+  value = local.azure.location
 }
 
 output "service_code" {
@@ -12,7 +12,7 @@ output "service_code" {
 
 output "existing_resource_group" {
   description = "Whether the platform and its state use a resource group made in advance."
-  value       = try(local.config.existing_resource_group, null) != null
+  value       = try(local.azure.existing_resource_group, null) != null
 }
 
 output "names" {

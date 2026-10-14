@@ -6,7 +6,7 @@ Contributor and User Access Administrator, signed in with the Azure CLI. After t
 owns every change.
 
 Where the subscription's resource groups are made for the team (SND1 before the gate before DEV), set
-`existing_resource_group` in the environment's parameters: the platform and its state then go into that
+`existing_resource_group` under `azure` in the environment's parameters: the platform and its state then go into that
 group, and you need Contributor and User Access Administrator (or Role Based Access Control
 Administrator) on the group rather than the subscription.
 
@@ -31,14 +31,15 @@ az login --tenant <tenant-id>
 az account set --subscription <subscription-id>
 export ARM_SUBSCRIPTION_ID=<subscription-id>
 
-envs="$(realpath ../ai-platform-environments)"
+# The environment's parameters, merged and validated, as the workflows read them.
+npm ci --prefix checks
+node checks/bin/aip-checks.js params --infra . --environments ../ai-platform-environments \
+  --environment infradev --out /tmp/params.tfvars.json
+
 prefix() { gh api "repos/DEFRA/$1/actions/oidc/customization/sub" --jq .sub_claim_prefix; }
 cat > bootstrap/bootstrap.auto.tfvars.json <<EOF
 {
-  "config_files": [
-    "$envs/global.tfvars.json",
-    "$envs/environments/infradev/platform.tfvars.json"
-  ],
+  "params_file": "/tmp/params.tfvars.json",
   "deploy_client_id": "<deploy identity client ID>",
   "oidc_subject_prefixes": {
     "ai-platform-tenants": "$(prefix ai-platform-tenants)",
@@ -52,8 +53,8 @@ terraform -chdir=bootstrap init
 terraform -chdir=bootstrap apply
 ```
 
-`config_files` is the same layering the workflows use: the shared parameters, then the environment's,
-a later file's top-level key winning. The DEFRA repositories use immutable OIDC subjects,
+`params_file` is the file the workflows read too: `aip-checks params` deep-merges the shared parameters
+with the environment's and validates them. The DEFRA repositories use immutable OIDC subjects,
 `repo:DEFRA@{org-id}/{repo}@{repo-id}`, so the federated credentials are created from each repository's
 prefix rather than its name. Keep `bootstrap/bootstrap.auto.tfvars.json` out of Git (it is ignored); it
 holds a real client ID.

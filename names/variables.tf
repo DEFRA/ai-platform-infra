@@ -1,9 +1,9 @@
-variable "config_files" {
-  description = "ai-platform-environments parameter files in -var-file order: global.tfvars.json, then environments/{env}/platform.tfvars.json. A later file's top-level key wins, as with -var-file."
-  type        = list(string)
+variable "params_file" {
+  description = "The environment's parameters as aip-checks params writes them: the global file deep-merged with the environment's."
+  type        = string
 
   validation {
-    condition     = length(var.config_files) > 0 && alltrue([for path in var.config_files : endswith(path, ".tfvars.json")])
-    error_message = "config_files lists at least one .tfvars.json file."
+    condition     = endswith(var.params_file, ".tfvars.json")
+    error_message = "params_file is the .tfvars.json file aip-checks params writes."
   }
 }

@@ -22,29 +22,34 @@ mock_provider "azuread" {}
 
 variables {
   environment  = "infradev"
-  location     = "uksouth"
   service_code = "AIP"
   naming = {
     sub_type             = "SND"
     environment_instance = "1"
   }
-  network          = { mode = "public-minimal" }
-  named_exceptions = []
-  apim             = { sku = "Developer", capacity = 1 }
-  apim_publisher = {
-    name  = "Defra AI Platform"
-    email = "ai-platform@example.gov.uk"
-  }
-  foundry_regions = ["uksouth", "swedencentral"]
-  key_vault       = { soft_delete_retention_days = 7 }
-  log_analytics = {
-    retention_in_days         = 30
-    daily_quota_gb            = 1
-    subscription_activity_log = true
-  }
-  application_insights = { sampling_percentage = 100 }
-  identities = {
-    portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002"
+  azure = {
+    location         = "uksouth"
+    network          = { mode = "public-minimal" }
+    named_exceptions = []
+    apim = {
+      sku      = "Developer"
+      capacity = 1
+      publisher = {
+        name  = "Defra AI Platform"
+        email = "ai-platform@example.gov.uk"
+      }
+    }
+    foundry   = { regions = ["uksouth", "swedencentral"] }
+    key_vault = { soft_delete_retention_days = 7 }
+    log_analytics = {
+      retention_in_days         = 30
+      daily_quota_gb            = 1
+      subscription_activity_log = true
+    }
+    application_insights = { sampling_percentage = 100 }
+    identities = {
+      portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002"
+    }
   }
   entra_enabled = true
   release       = "v0.4.0"
@@ -106,7 +111,7 @@ run "deploys_into_an_existing_resource_group" {
   command = plan
 
   variables {
-    existing_resource_group = "SNDAIEAIPRGP1401"
+    azure = merge(var.azure, { existing_resource_group = "SNDAIEAIPRGP1401" })
   }
 
   assert {
@@ -142,20 +147,20 @@ run "refuses_the_private_topology_until_it_is_built" {
   command = plan
 
   variables {
-    network = { mode = "private" }
+    azure = merge(var.azure, { network = { mode = "private" } })
   }
 
-  expect_failures = [var.network]
+  expect_failures = [var.azure]
 }
 
 run "refuses_a_first_foundry_region_other_than_the_location" {
   command = plan
 
   variables {
-    foundry_regions = ["swedencentral", "uksouth"]
+    azure = merge(var.azure, { foundry = { regions = ["swedencentral", "uksouth"] } })
   }
 
-  expect_failures = [var.foundry_regions]
+  expect_failures = [var.azure]
 }
 
 run "refuses_another_service_code" {

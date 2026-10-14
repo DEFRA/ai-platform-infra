@@ -3,7 +3,8 @@
 # passes to `terraform init`; the bootstrap root uses it as a module.
 
 locals {
-  config = merge([for path in var.config_files : jsondecode(file(path))]...)
+  config = jsondecode(file(var.params_file))
+  azure  = local.config.azure
   codes  = merge(local.config.naming, { service_code = local.config.service_code })
 }
 
@@ -12,8 +13,8 @@ module "naming" {
 
   environment     = local.config.environment
   codes           = local.codes
-  location        = local.config.location
-  foundry_regions = local.config.foundry_regions
+  location        = local.azure.location
+  foundry_regions = local.azure.foundry.regions
 
-  existing_resource_group = try(local.config.existing_resource_group, null)
+  existing_resource_group = try(local.azure.existing_resource_group, null)
 }

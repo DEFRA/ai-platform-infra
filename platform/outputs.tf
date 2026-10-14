@@ -28,7 +28,7 @@ output "foundry_accounts" {
       id              = account.id
       name            = account.name
       openai_endpoint = account.openai_endpoint
-      primary         = region == var.foundry_regions[0]
+      primary         = region == var.azure.foundry.regions[0]
     }
   }
 }
@@ -64,14 +64,14 @@ output "naming" {
 
 output "foundry_regions" {
   description = "In configured order: the first holds the projects."
-  value       = var.foundry_regions
+  value       = var.azure.foundry.regions
 }
 
 output "location" {
-  value = var.location
+  value = var.azure.location
 }
 
 output "portal_api_principal_object_id" {
   description = "Co-owner of every team registration."
-  value       = var.identities.portal_api_principal_object_id
+  value       = var.azure.identities.portal_api_principal_object_id
 }

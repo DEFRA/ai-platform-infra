@@ -1,19 +1,11 @@
-# Mirrors schemas/environment.schema.json (R9). Values come from
-# ai-platform-environments: -var-file global.tfvars.json, then
-# -var-file environments/{env}/platform.tfvars.json, whose top-level keys
-# win. Nothing here is specific to one environment.
+# Mirrors schemas/environment.schema.json (R9). Values come from the one
+# file aip-checks params writes: ai-platform-environments' global file
+# deep-merged with the environment's. Codes every cloud shares are top-level
+# variables; everything specific to Azure is in azure. Nothing here is
+# specific to one environment.
 
 variable "environment" {
   type = string
-}
-
-variable "location" {
-  type = string
-
-  validation {
-    condition     = var.location == "uksouth"
-    error_message = "The platform's control plane is in UK South."
-  }
 }
 
 variable "service_code" {
@@ -34,91 +26,70 @@ variable "naming" {
   })
 }
 
-variable "existing_resource_group" {
-  description = "Before the gate before DEV only: an existing CCoE-named resource group the platform and its state use instead of the two this module derives."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.existing_resource_group == null || can(regex("^[A-Z]{3}[A-Z0-9]{3}[A-Z]{3}RGP[0-9]{4}$", var.existing_resource_group))
-    error_message = "existing_resource_group must be a CCoE resource group name, such as SNDAIEAIPRGP1401."
-  }
-}
-
-variable "network" {
+variable "azure" {
+  description = "Everything specific to Azure for this environment."
   type = object({
-    mode = string
+    location                = string
+    existing_resource_group = optional(string)
+    network = object({
+      mode = string
+    })
+    # Validated by aip-checks; used once the private topology exists.
+    named_exceptions = list(object({
+      id    = string
+      owner = string
+      ends  = string
+    }))
+    apim = object({
+      sku      = string
+      capacity = number
+      publisher = object({
+        name  = string
+        email = string
+      })
+    })
+    foundry = object({
+      regions = list(string)
+    })
+    key_vault = object({
+      soft_delete_retention_days = number
+    })
+    log_analytics = object({
+      retention_in_days         = number
+      daily_quota_gb            = optional(number)
+      subscription_activity_log = bool
+    })
+    application_insights = object({
+      sampling_percentage = number
+    })
+    identities = object({
+      portal_api_principal_object_id = string
+    })
   })
 
   validation {
-    condition     = var.network.mode == "public-minimal"
+    condition     = var.azure.location == "uksouth"
+    error_message = "The platform's control plane is in UK South."
+  }
+
+  validation {
+    condition     = var.azure.existing_resource_group == null || can(regex("^[A-Z]{3}[A-Z0-9]{3}[A-Z]{3}RGP[0-9]{4}$", var.azure.existing_resource_group))
+    error_message = "azure.existing_resource_group must be a CCoE resource group name, such as SNDAIEAIPRGP1401."
+  }
+
+  validation {
+    condition     = var.azure.network.mode == "public-minimal"
     error_message = "Only the Phase 1 public minimal platform is implemented; the private topology is built at the gate before DEV."
   }
-}
-
-# Validated by aip-checks; used once the private topology exists.
-# tflint-ignore: terraform_unused_declarations
-variable "named_exceptions" {
-  type = list(object({
-    id    = string
-    owner = string
-    ends  = string
-  }))
-  default = []
-}
-
-variable "apim" {
-  type = object({
-    sku      = string
-    capacity = number
-  })
-}
-
-variable "apim_publisher" {
-  type = object({
-    name  = string
-    email = string
-  })
-}
-
-variable "foundry_regions" {
-  description = "Regions with a Foundry account; the first holds the projects."
-  type        = list(string)
 
   validation {
-    condition     = length(var.foundry_regions) > 0 && var.foundry_regions[0] == var.location
+    condition     = length(var.azure.foundry.regions) > 0 && var.azure.foundry.regions[0] == var.azure.location
     error_message = "The first Foundry region holds the projects and must be the platform's location."
   }
-}
-
-variable "key_vault" {
-  type = object({
-    soft_delete_retention_days = number
-  })
-}
-
-variable "log_analytics" {
-  type = object({
-    retention_in_days         = number
-    daily_quota_gb            = optional(number)
-    subscription_activity_log = bool
-  })
-}
-
-variable "application_insights" {
-  type = object({
-    sampling_percentage = number
-  })
-}
-
-variable "identities" {
-  type = object({
-    portal_api_principal_object_id = string
-  })
 
   validation {
-    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.identities.portal_api_principal_object_id))
-    error_message = "portal_api_principal_object_id must be a GUID."
+    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.azure.identities.portal_api_principal_object_id))
+    error_message = "azure.identities.portal_api_principal_object_id must be a GUID."
   }
 }
 

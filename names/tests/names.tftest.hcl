@@ -1,11 +1,8 @@
 variables {
-  config_files = [
-    "../examples/ai-platform-environments/global.tfvars.json",
-    "../examples/ai-platform-environments/environments/infradev/platform.tfvars.json",
-  ]
+  params_file = "tests/params.tfvars.json"
 }
 
-run "names_infradev_from_the_layered_parameters" {
+run "names_infradev_from_its_parameters" {
   command = plan
 
   assert {
@@ -15,24 +12,12 @@ run "names_infradev_from_the_layered_parameters" {
 
   assert {
     condition     = output.names.foundry_accounts["swedencentral"] == "aif-aip-infradev-swc"
-    error_message = "the global Foundry regions apply to the environment"
-  }
-}
-
-run "lets_the_environment_file_win" {
-  command = plan
-
-  variables {
-    config_files = [
-      "../examples/ai-platform-environments/global.tfvars.json",
-      "../examples/ai-platform-environments/environments/infradev/platform.tfvars.json",
-      "tests/override.tfvars.json",
-    ]
+    error_message = "every configured Foundry region gets an account"
   }
 
   assert {
-    condition     = keys(output.names.foundry_accounts) == ["uksouth"]
-    error_message = "a later file's top-level key replaces the earlier one"
+    condition     = !output.existing_resource_group
+    error_message = "the platform creates its own resource groups unless told otherwise"
   }
 }
 
@@ -40,8 +25,8 @@ run "refuses_a_file_that_is_not_tfvars_json" {
   command = plan
 
   variables {
-    config_files = ["../examples/ai-platform-environments/registry.json"]
+    params_file = "../examples/ai-platform-environments/registry.json"
   }
 
-  expect_failures = [var.config_files]
+  expect_failures = [var.params_file]
 }

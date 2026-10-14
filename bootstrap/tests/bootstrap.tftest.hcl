@@ -8,10 +8,7 @@ mock_provider "azuread" {
 }
 
 variables {
-  config_files = [
-    "../examples/ai-platform-environments/global.tfvars.json",
-    "../examples/ai-platform-environments/environments/infradev/platform.tfvars.json",
-  ]
+  params_file      = "../names/tests/params.tfvars.json"
   deploy_client_id = "00000000-0000-0000-0000-000000000000"
   oidc_subject_prefixes = {
     "ai-platform-tenants"     = "repo:DEFRA@1/ai-platform-tenants@2"
@@ -32,11 +29,7 @@ run "keeps_state_and_role_administration_in_an_existing_resource_group" {
   command = plan
 
   variables {
-    config_files = [
-      "../examples/ai-platform-environments/global.tfvars.json",
-      "../examples/ai-platform-environments/environments/infradev/platform.tfvars.json",
-      "tests/existing-resource-group.tfvars.json",
-    ]
+    params_file = "tests/params-existing-resource-group.tfvars.json"
   }
 
   assert {

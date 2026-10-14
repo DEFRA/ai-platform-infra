@@ -30,7 +30,7 @@ resource "azurerm_monitor_diagnostic_setting" "resource" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "activity_log" {
-  count = var.log_analytics.subscription_activity_log ? 1 : 0
+  count = var.azure.log_analytics.subscription_activity_log ? 1 : 0
 
   name                       = local.names.diagnostics
   target_resource_id         = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"

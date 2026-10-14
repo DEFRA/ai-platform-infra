@@ -15,7 +15,7 @@ data "azuread_service_principal" "deploy" {
 module "names" {
   source = "../names"
 
-  config_files = var.config_files
+  params_file = var.params_file
 }
 
 module "roles" {
