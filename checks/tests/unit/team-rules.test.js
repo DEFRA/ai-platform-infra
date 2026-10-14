@@ -321,7 +321,8 @@ describe('checkEnvironmentTeams', () => {
       checkEnvironmentTeams({
         teams: [{ path: teamPath(document), document }],
         environment: 'sandbox',
-        models
+        models,
+        params: environmentParams()
       })
     ).toEqual([
       {
@@ -343,13 +344,41 @@ describe('checkEnvironmentTeams', () => {
     })
 
     expect(
-      checkEnvironmentTeams({ teams, environment: 'infradev', models })
+      checkEnvironmentTeams({
+        teams,
+        environment: 'infradev',
+        models,
+        params: environmentParams()
+      })
     ).toEqual([
       {
         file: 'environments/infradev',
         message: 'gpt-5-nano capacity 12 exceeds the infradev quota 10'
       }
     ])
+  })
+
+  test('refuses more deployments than Azure allows in one Foundry account', () => {
+    const teams = Array.from({ length: 33 }, (_, index) => {
+      const document = keyTeam({
+        team: { slug: `team-${index}`, serviceCode: 'ZZZ' }
+      })
+
+      return { path: teamPath(document), document }
+    })
+
+    expect(
+      checkEnvironmentTeams({
+        teams,
+        environment: 'infradev',
+        models,
+        params: environmentParams()
+      })
+    ).toContainEqual({
+      file: 'environments/infradev',
+      message:
+        'the swedencentral Foundry account would hold 33 model deployments; Azure allows 32'
+    })
   })
 
   test('refuses a CDP service trusted by two teams', () => {
@@ -361,7 +390,12 @@ describe('checkEnvironmentTeams', () => {
     }))
 
     expect(
-      checkEnvironmentTeams({ teams, environment: 'infradev', models })
+      checkEnvironmentTeams({
+        teams,
+        environment: 'infradev',
+        models,
+        params: environmentParams()
+      })
     ).toEqual([
       {
         file: 'environments/infradev/gamma.json',

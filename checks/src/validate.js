@@ -121,7 +121,12 @@ function checkWholeEnvironment(repoDir, ref, environment, context) {
   }
 
   problems.push(
-    ...checkEnvironmentTeams({ teams, environment, models: context.models })
+    ...checkEnvironmentTeams({
+      teams,
+      environment,
+      models: context.models,
+      params
+    })
   )
 
   return problems

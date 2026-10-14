@@ -43,7 +43,9 @@ Rules beyond the schema, enforced by `validate`:
 - Each deployment's catalogue model has tier `team`, lists the environment, is `available` or
   `eligible` (a `deprecated` model keeps existing grants only) and offers the SKU for the `team` tier
   in a region the environment's Foundry accounts cover. Capacity is within the environment's
-  `capacityPolicy`, and the sum across every team per model is within its `quota`.
+  `capacityPolicy`, and the sum across every team per model is within its `quota`. Each region's
+  Foundry account holds at most 32 model deployments across every team, the Azure limit per
+  resource.
 - `allowedDeployments` holds only the team's own deployments in Phase 1 (shared Research grants
   follow); `tokensPerMinute` does not exceed the team's capacity.
 - OAuth: Entra enabled in the registry entry; CDP federations use the entry's issuer and an
@@ -78,10 +80,11 @@ of the state repository with `X-GitHub-Api-Version: 2026-03-10`, which returns t
 
 `submit` then:
 
-1. Validates the inputs and the document at the environment's pinned infra release, against `main`
+1. Is idempotent per operation: if `op/{operation_id}` already has a pull request, open or merged, it
+   reports it (`existing`) and stops before validating, so a retry never fails on a `revision` that
+   `main` has since moved past.
+2. Validates the inputs and the document at the environment's pinned infra release, against `main`
    with the change staged locally. Nothing is written to Git if it fails (`checks-failed`).
-2. Is idempotent per operation: if `op/{operation_id}` already has a pull request it reports it and
-   stops.
 3. Refuses a second open `op/*` pull request for the same path (`file-locked`) and a `revision` that
    does not match `main` (`revision-conflict`).
 4. Commits as the App with GraphQL `createCommitOnBranch` (`expectedHeadOid`) on `op/{operation_id}`,
@@ -89,8 +92,9 @@ of the state repository with `X-GitHub-Api-Version: 2026-03-10`, which returns t
    trailers in the squash body.
 5. `abandon` closes the operation's open pull request and deletes its branch, releasing the file.
 
-Every run writes a job summary with the outcome code. Retries and reconciles are fresh dispatches,
-never re-runs.
+Every run writes a job summary with the outcome code. Submissions for one file run one at a time, in
+order (`concurrency` with `queue: max`), so a waiting submission is never replaced by a newer one.
+Retries and reconciles are fresh dispatches, never re-runs.
 
 ## Commits, pull requests and checks
 

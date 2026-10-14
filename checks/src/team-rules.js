@@ -7,6 +7,10 @@ const TEAM_PATH = /^environments\/([a-z][a-z0-9]{1,15})\/([^/]+)\.json$/
 const AWS_ROLE_NAME = '[A-Za-z0-9+=,.@_-]{1,64}'
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const GRANTABLE = new Set(['available', 'eligible'])
+// Every team's dedicated deployments share the environment's Foundry account
+// in a region, and Azure allows 32 model deployments per Foundry resource
+// (Microsoft Learn, Foundry Models quotas and limits, checked 14 Oct 2026).
+const MAX_DEPLOYMENTS_PER_ACCOUNT = 32
 
 function problem(file, message) {
   return { file, message }
@@ -293,18 +297,21 @@ function checkTeamFile(input) {
 
 /**
  * Rules across every team file in one environment: capacity per model
- * against the environment quota, and one team per CDP service.
+ * against the environment quota, deployments per Foundry account against
+ * Azure's limit, and one team per CDP service.
  *
  * @param {object} input - The environment's team files.
  * @param {Array<{path: string, document: object}>} input.teams - Parsed,
  *   schema-valid team files.
  * @param {string} input.environment - Environment name.
  * @param {Map<string, object>} input.models - Catalogue models by slug.
+ * @param {object} input.params - The environment's effective parameters.
  * @returns {Array<{file: string, message: string}>} Problems.
  */
-function checkEnvironmentTeams({ teams, environment, models }) {
+function checkEnvironmentTeams({ teams, environment, models, params }) {
   const problems = []
   const capacity = new Map()
+  const perAccount = new Map()
   const subjects = new Map()
 
   for (const { path, document } of teams) {
@@ -313,6 +320,15 @@ function checkEnvironmentTeams({ teams, environment, models }) {
         deployment.slug,
         (capacity.get(deployment.slug) ?? 0) + deployment.capacity
       )
+
+      const sku = skusForTier(
+        models.get(deployment.slug) ?? { skus: [] },
+        'team'
+      ).find((candidate) => candidate.name === deployment.sku)
+      const region = sku && regionFor(sku, params)
+      if (region) {
+        perAccount.set(region, (perAccount.get(region) ?? 0) + 1)
+      }
     }
 
     for (const federation of document.oauth?.federations ?? []) {
@@ -343,6 +359,18 @@ function checkEnvironmentTeams({ teams, environment, models }) {
           `environments/${environment}`,
           `${slug} capacity ${total} exceeds the ${environment} quota ` +
             `${quota ?? 'which is not set'}`
+        )
+      )
+    }
+  }
+
+  for (const [region, count] of perAccount) {
+    if (count > MAX_DEPLOYMENTS_PER_ACCOUNT) {
+      problems.push(
+        problem(
+          `environments/${environment}`,
+          `the ${region} Foundry account would hold ${count} model deployments; ` +
+            `Azure allows ${MAX_DEPLOYMENTS_PER_ACCOUNT}`
         )
       )
     }
