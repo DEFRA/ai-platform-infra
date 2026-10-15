@@ -121,6 +121,8 @@ locals {
   # tenants vault holds the keys and secrets the Portal API creates (design E).
   key_vaults = {
     platform = {
+      # The identity running this apply: a person on a local run, the deploy
+      # identity in a workflow, so Azure infers the principal type.
       deploy-secrets-officer = {
         principal_id       = data.azurerm_client_config.current.object_id
         role_definition_id = local.roles.key_vault_secrets_officer
@@ -128,12 +130,14 @@ locals {
       gateway-secrets-user = {
         principal_id       = module.apim.principal_id
         role_definition_id = local.roles.key_vault_secrets_user
+        principal_type     = "ServicePrincipal"
       }
     }
     tenants = {
       portal-api-secrets-officer = {
         principal_id       = var.azure.identities.portal_api_principal_object_id
         role_definition_id = local.roles.key_vault_secrets_officer
+        principal_type     = "ServicePrincipal"
       }
     }
   }

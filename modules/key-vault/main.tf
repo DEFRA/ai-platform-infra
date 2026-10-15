@@ -30,5 +30,5 @@ resource "azurerm_role_assignment" "this" {
   scope              = azurerm_key_vault.this.id
   role_definition_id = each.value.role_definition_id
   principal_id       = each.value.principal_id
-  principal_type     = "ServicePrincipal"
+  principal_type     = each.value.principal_type
 }

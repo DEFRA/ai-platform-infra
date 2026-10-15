@@ -36,10 +36,11 @@ variable "allowed_ip_ranges" {
 }
 
 variable "role_assignments" {
-  description = "Data-plane roles at vault scope, keyed by a stable name; role_definition_id is a full ID from the roles module."
+  description = "Data-plane roles at vault scope, keyed by a stable name; role_definition_id is a full ID from the roles module. principal_type is left unset for the identity running Terraform, a person on a local run and a service principal in a workflow."
   type = map(object({
     principal_id       = string
     role_definition_id = string
+    principal_type     = optional(string)
   }))
   default = {}
 }

@@ -6,7 +6,8 @@
     fixed formats only (GUIDs, ISO 8601 UTC times, status words), because they are
     substituted into the expressions below.
     Access window entries: clientId|status|validFrom|expiresAt, separated by ";",
-    where status is active or suspended and expiresAt may be untilRevoked.
+    where status is active or suspended and expiresAt may be untilRevoked. Times
+    are parsed as DateTimeOffset because APIM does not allow converting a DateTime to UTC.
     GET /whoami passes steps 1 and 2 only, so a client can check its setup.
   -->
   <validate-azure-ad-token tenant-id="{{${tenant_id_named_value}}}" header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="invalid-token" output-token-variable-name="aipToken">
@@ -46,9 +47,9 @@
       var parts = entry.Split('|');
       if (parts.Length != 4 || parts[0] != client) { continue; }
       if (parts[1] != "active") { return "grant-suspended"; }
-      if (DateTime.Parse(parts[2]).ToUniversalTime() > now) { return "grant-suspended"; }
+      if (DateTimeOffset.Parse(parts[2]) > now) { return "grant-suspended"; }
       if (parts[3] == "untilRevoked") { return "ok"; }
-      if (now >= DateTime.Parse(parts[3]).ToUniversalTime()) { return "grant-expired"; }
+      if (now >= DateTimeOffset.Parse(parts[3])) { return "grant-expired"; }
       return "ok";
     }
     return "grant-suspended";
