@@ -7,8 +7,8 @@ variable "release" {
   type        = string
 }
 
-variable "entra_enabled" {
-  description = "The registry entry's entra.enabled."
+variable "team_registrations" {
+  description = "Whether each team gets an Entra app registration: the registry entry's entra.enabled and entra.teamRegistrations (not false)."
   type        = bool
 }
 
@@ -116,11 +116,6 @@ variable "teams" {
   }
 
   validation {
-    condition     = var.entra_enabled || length(var.teams) == 0
-    error_message = "Teams need Entra enabled for the environment: every team is an OAuth team."
-  }
-
-  validation {
     condition = alltrue([
       for team in var.teams : alltrue([
         for slug in team.gateway.allowedDeployments : contains([for d in team.deployments : d.slug], slug)
@@ -152,6 +147,13 @@ variable "teams" {
       ]
     ]))
     error_message = "A CDP federation names only its service; an Azure federation names its issuer and subject."
+  }
+
+  validation {
+    condition = var.team_registrations || alltrue([
+      for team in var.teams : length(team.oauth.federations) == 0
+    ])
+    error_message = "Federations hang off a team's registration: without team registrations a team has none."
   }
 
   validation {

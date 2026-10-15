@@ -234,14 +234,32 @@ describe('checkTeamFile', () => {
     expect(check(team)).toContain('a removed team keeps no resources')
   })
 
-  test('refuses oauth where Entra is not enabled', () => {
+  test('refuses a federation where Entra is not enabled', () => {
     const entry = registryEntry({
       entra: { enabled: false, tenantId: registryEntry().entra.tenantId }
     })
 
     expect(check(betaTeam(), { entry })).toContain(
-      'oauth is not enabled in infradev'
+      'federations need a team registration, which infradev does not create'
     )
+  })
+
+  test('refuses a federation where team registrations are off', () => {
+    const entry = registryEntry({
+      entra: { ...registryEntry().entra, teamRegistrations: false }
+    })
+
+    expect(check(betaTeam(), { entry })).toContain(
+      'federations need a team registration, which infradev does not create'
+    )
+  })
+
+  test('allows a team with no federation where team registrations are off', () => {
+    const entry = registryEntry({
+      entra: { ...registryEntry().entra, teamRegistrations: false }
+    })
+
+    expect(check(alphaTeam(), { entry })).toEqual([])
   })
 
   test('refuses a CDP federation that names its own issuer or subject', () => {
@@ -501,6 +519,10 @@ describe('checkEnvironmentTeams', () => {
 
     test("follows the registry entry's limit", () => {
       expect(entraProblems(3, { createdObjectLimit: 7 })).toHaveLength(1)
+    })
+
+    test('counts no team objects where team registrations are off', () => {
+      expect(entraProblems(125, { teamRegistrations: false })).toEqual([])
     })
   })
 })

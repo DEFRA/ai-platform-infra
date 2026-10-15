@@ -20,11 +20,11 @@ output "resources" {
       url          = "${var.platform.api_management.gateway_url}/${module.api.path}"
       named_values = module.api.named_values
     }
-    registration = {
-      client_id                   = module.registration.client_id
-      object_id                   = module.registration.object_id
-      service_principal_object_id = module.registration.service_principal_object_id
-      federations                 = module.registration.federations
+    registration = length(module.registration) == 0 ? null : {
+      client_id                   = module.registration[0].client_id
+      object_id                   = module.registration[0].object_id
+      service_principal_object_id = module.registration[0].service_principal_object_id
+      federations                 = module.registration[0].federations
     }
   }
 }

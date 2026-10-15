@@ -94,7 +94,7 @@ variable "azure" {
 }
 
 variable "entra_enabled" {
-  description = "The registry entry's entra.enabled: whether the API audience and team registrations exist here."
+  description = "The registry entry's entra.enabled: whether the API audience exists here."
   type        = bool
 }
 

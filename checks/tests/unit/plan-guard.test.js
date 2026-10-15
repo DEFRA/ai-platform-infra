@@ -120,7 +120,7 @@ describe('explainedRemovals', () => {
     ])
 
     expect(explainedRemovals(before, after)).toEqual([
-      'module.team["beta"].module.registration.' +
+      'module.team["beta"].module.registration[0].' +
         'azuread_application_federated_identity_credential.federation' +
         '["beta-api"]'
     ])

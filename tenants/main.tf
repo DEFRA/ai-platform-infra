@@ -62,6 +62,8 @@ module "team" {
   cdp           = var.cdp
   tags          = local.tags
 
+  registration_enabled = var.team_registrations
+
   platform = {
     api_management = {
       name                = local.platform.api_management.name

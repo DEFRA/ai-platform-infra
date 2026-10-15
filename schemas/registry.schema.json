@@ -95,6 +95,11 @@
           "required": ["enabled", "tenantId"],
           "properties": {
             "enabled": { "type": "boolean" },
+            "teamRegistrations": {
+              "description": "Whether tenants apply creates each team's Entra app registration. False skips only that registration: the team's project, deployments and API are still applied, and its federations must be empty. Interim switch for a deploy identity that cannot yet create app registrations; it has no effect while enabled is false.",
+              "type": "boolean",
+              "default": true
+            },
             "createdObjectLimit": {
               "description": "How many Entra objects the environment's deploy identity may create, soft-deleted ones included: 250 for a principal with no Entra role unless Defra's Entra team changes it.",
               "type": "integer",

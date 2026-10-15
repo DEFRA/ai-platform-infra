@@ -23,6 +23,11 @@ function problem(file, message) {
   return { file, message }
 }
 
+// entra.teamRegistrations false skips only the per-team app registration.
+function teamRegistrations(entry) {
+  return entry.entra.enabled && entry.entra.teamRegistrations !== false
+}
+
 function parseTeamPath(path) {
   const match = TEAM_PATH.exec(path)
 
@@ -181,8 +186,13 @@ function checkOauth(path, document, entry) {
     return []
   }
 
-  if (!entry.entra.enabled) {
-    return [problem(path, `oauth is not enabled in ${entry.name}`)]
+  if (!teamRegistrations(entry) && oauth.federations.length > 0) {
+    return [
+      problem(
+        path,
+        `federations need a team registration, which ${entry.name} does not create`
+      )
+    ]
   }
 
   const problems = []
@@ -351,7 +361,7 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
       }
     }
 
-    if (document.oauth) {
+    if (document.oauth && teamRegistrations(entry)) {
       registrations += 1
     }
 
