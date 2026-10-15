@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.4.0...v0.5.0) (2026-10-15)
+
+
+### Features
+
+* add the team modules and the tenants root ([b72dd68](https://github.com/DEFRA/ai-platform-infra/commit/b72dd68419458cb71b8fbebe2b5b338087c4dab4))
+* add the team modules and the tenants root ([0592d41](https://github.com/DEFRA/ai-platform-infra/commit/0592d41f4fedefc31cec3f6e33abc27425c8cfd4))
+* derive CDP federations from the registry entry in Terraform ([ac79197](https://github.com/DEFRA/ai-platform-infra/commit/ac7919739cdc9db455ed42560f691d37fb574c50))
+* give every team an OAuth registration and a token-only API ([7aa08e8](https://github.com/DEFRA/ai-platform-infra/commit/7aa08e81c4b75d433b3b7aae3577b38f7aa760d7))
+
+
+### Bug Fixes
+
+* ignore the ServiceCode tag Azure Policy adds to Foundry projects ([d755b1b](https://github.com/DEFRA/ai-platform-infra/commit/d755b1bb390e32feb1a98f112b0f7b3b4202512d))
+
 ## [0.4.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.3.0...v0.4.0) (2026-10-15)
 
 
