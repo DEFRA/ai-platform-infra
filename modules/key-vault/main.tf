@@ -18,6 +18,9 @@ resource "azurerm_key_vault" "this" {
 
   lifecycle {
     prevent_destroy = true
+
+    # Azure Policy copies the resource group's ServiceCode tag onto its resources.
+    ignore_changes = [tags["ServiceCode"]]
   }
 }
 

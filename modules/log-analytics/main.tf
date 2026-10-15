@@ -16,6 +16,9 @@ resource "azurerm_log_analytics_workspace" "this" {
 
   lifecycle {
     prevent_destroy = true
+
+    # Azure Policy copies the resource group's ServiceCode tag onto its resources.
+    ignore_changes = [tags["ServiceCode"]]
   }
 }
 
@@ -31,4 +34,8 @@ resource "azurerm_application_insights" "this" {
   sampling_percentage          = var.sampling_percentage
   ip_masking_enabled           = true
   tags                         = var.tags
+
+  lifecycle {
+    ignore_changes = [tags["ServiceCode"]]
+  }
 }
