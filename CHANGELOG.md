@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.3.0...v0.4.0) (2026-10-15)
+
+
+### Features
+
+* add the naming module, the platform root and the bootstrap ([#6](https://github.com/DEFRA/ai-platform-infra/issues/6)) ([a8d326e](https://github.com/DEFRA/ai-platform-infra/commit/a8d326e0e94fc6e7b2a2ef0e6a056238001ac939))
+
 ## [0.3.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.2.0...v0.3.0) (2026-10-15)
 
 
