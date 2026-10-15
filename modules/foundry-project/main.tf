@@ -11,4 +11,9 @@ resource "azurerm_cognitive_account_project" "this" {
   identity {
     type = "SystemAssigned"
   }
+
+  lifecycle {
+    # Azure Policy copies the resource group's ServiceCode tag onto its resources.
+    ignore_changes = [tags["ServiceCode"]]
+  }
 }
