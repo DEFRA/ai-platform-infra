@@ -1,0 +1,11 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+*.auto.tfvars.json
+node_modules/
+coverage/# Only root modules commit lock files.
+modules/**/.terraform.lock.hcl

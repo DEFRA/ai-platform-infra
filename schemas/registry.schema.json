@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "registry.schema.json",
+  "title": "AI Platform environment registry",
+  "description": "registry.json in ai-platform-environments: one entry per environment the GitOps machinery may touch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "environments"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "environments": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/environment" }
+    }
+  },
+  "$defs": {
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "class",
+        "subscription",
+        "deployIdentity",
+        "cdp",
+        "writers",
+        "refs",
+        "autoPin",
+        "entra",
+        "resetNightly",
+        "runner",
+        "state"
+      ],
+      "properties": {
+        "name": {
+          "description": "Folder under environments/, GitHub Environment name and {env} in logical names.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]{1,15}$"
+        },
+        "class": {
+          "description": "platform-test (Infradev) and sandbox may run the temporary public minimal platform; every other class is private from its first resource.",
+          "enum": [
+            "platform-test",
+            "sandbox",
+            "consumer-lower",
+            "consumer-production",
+            "shared-service"
+          ]
+        },
+        "subscription": {
+          "description": "Subscription alias only; the ID is a variable on the GitHub Environment.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]{2,40}$"
+        },
+        "deployIdentity": {
+          "description": "Logical label of the federated identity the apply jobs use; its client ID is a variable on the GitHub Environment.",
+          "type": "string",
+          "pattern": "^id-aip-deploy-[a-z0-9]+$"
+        },
+        "cdp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["environment", "issuer", "awsAccount", "audience"],
+          "properties": {
+            "environment": {
+              "enum": ["dev", "test", "perf-test", "ext-test", "prod"]
+            },
+            "issuer": {
+              "type": "string",
+              "pattern": "^https://[0-9a-f-]{36}\\.tokens\\.sts\\.global\\.api\\.aws$"
+            },
+            "awsAccount": { "type": "string", "pattern": "^[0-9]{12}$" },
+            "audience": { "const": "api://AzureADTokenExchange" }
+          }
+        },
+        "writers": {
+          "description": "GitHub App slugs that may open pull requests changing this environment's folder.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,38}$" }
+        },
+        "refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["tag", "sha"] }
+        },
+        "autoPin": { "type": "boolean" },
+        "entra": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "tenantId"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "createdObjectLimit": {
+              "description": "How many Entra objects the environment's deploy identity may create, soft-deleted ones included: 250 for a principal with no Entra role unless Defra's Entra team changes it.",
+              "type": "integer",
+              "minimum": 2,
+              "default": 250
+            },
+            "tenantId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        },
+        "resetNightly": { "type": "boolean" },
+        "runner": {
+          "description": "Where apply jobs run: standard GitHub-hosted labels, or the environment's larger-runner group with Azure private networking.",
+          "type": "object",
+          "additionalProperties": false,
+          "oneOf": [{ "required": ["labels"] }, { "required": ["group"] }],
+          "properties": {
+            "labels": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" }
+            },
+            "group": { "type": "string", "pattern": "^aip-[a-z0-9]+$" }
+          }
+        },
+        "state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["location"],
+          "properties": {
+            "location": { "enum": ["uksouth"] }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "autoPin": { "const": true } } },
+          "then": {
+            "properties": {
+              "refs": { "type": "array", "contains": { "const": "tag" } }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

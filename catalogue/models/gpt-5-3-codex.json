@@ -9,7 +9,11 @@
   "skus": [{ "name": "GlobalStandard", "capacity": 15000 }],
   "displayName": "GPT-5.3 Codex",
   "description": "Agentic, tool-use-oriented model optimised for coding and long-running tasks.",
-  "useCases": ["Code generation", "Agentic workflows", "Long-document analysis"],
+  "useCases": [
+    "Code generation",
+    "Agentic workflows",
+    "Long-document analysis"
+  ],
   "tiers": ["research"],
   "environments": ["sandbox"],
   "dataZone": "uk",

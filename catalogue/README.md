@@ -14,3 +14,10 @@ Amazon Bedrock without long-lived AWS keys is unresolved (design pack constraint
 
 Release `v0.2.0` adopts this shape. Backends before it read only the earlier flat shape, so move an
 environment's `CATALOGUE_REF` to `v0.2.0` only once the new backend is deployed there.
+
+A model's `tiers` say who may use it. A `skus[]` entry without `tiers` is the hand-built Research
+deployment; the `team` tier needs a SKU with `tiers: ["team"]`, its `regions` and `dataZone`, and never a
+Global type (D03). `gpt-4-1-nano` and `gpt-5-nano` offer `DataZoneStandard` in Sweden Central to teams in
+Infradev, because neither is offered as Standard in UK South. `capacityPolicy.environments.{env}` overrides
+the limits per environment; its `quota`, in thousands of tokens per minute, caps the sum across every team
+in that environment, and an environment without one grants no team capacity.

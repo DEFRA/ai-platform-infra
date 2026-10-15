@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "environment.schema.json",
+  "title": "AI Platform environment parameters",
+  "description": "The effective platform parameters of one environment: ai-platform-environments/global.tfvars.json deep-merged with environments/{env}/platform.tfvars.json by aip-checks params (objects merge key by key; arrays and values replace). Codes every cloud shares sit at the top level; what is specific to a cloud sits under its key. Holds codes, never resource names.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["environment", "service_code", "naming", "azure"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]{1,15}$"
+    },
+    "service_code": {
+      "description": "The AI Platform's CCoE service code.",
+      "const": "AIP"
+    },
+    "naming": {
+      "description": "This environment's CCoE codes; the naming module composes every name from them and service_code.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sub_type", "environment_instance"],
+      "properties": {
+        "sub_type": {
+          "enum": [
+            "AIP",
+            "APS",
+            "CAT",
+            "DEV",
+            "LOG",
+            "MST",
+            "OPS",
+            "POC",
+            "PRD",
+            "PRE",
+            "SEC",
+            "SND",
+            "SSV1",
+            "SSV2",
+            "SSV3",
+            "SSV4",
+            "SSV5",
+            "TST"
+          ]
+        },
+        "environment_instance": {
+          "type": "string",
+          "pattern": "^[0-9]$"
+        }
+      }
+    },
+    "azure": {
+      "description": "Everything specific to Azure, read by the Azure platform root. Another cloud gets its own key beside it (aws), read by its own root.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location",
+        "network",
+        "named_exceptions",
+        "apim",
+        "foundry",
+        "key_vault",
+        "log_analytics",
+        "application_insights",
+        "identities"
+      ],
+      "properties": {
+        "location": {
+          "const": "uksouth"
+        },
+        "existing_resource_group": {
+          "description": "Before the gate before DEV only: an existing CCoE-named resource group the platform and its state deploy into, in place of the two the naming module derives, where the subscription's resource groups are made for the team.",
+          "type": "string",
+          "pattern": "^[A-Z]{3}[A-Z0-9]{3}[A-Z]{3}RGP[0-9]{4}$"
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": {
+              "description": "public-minimal is the temporary Phase 1 proof, allowed only in Infradev and the Sandbox until the gate before DEV.",
+              "enum": ["public-minimal", "private"]
+            }
+          }
+        },
+        "named_exceptions": {
+          "description": "Public paths outside Phase 1 exist only as named exceptions X1 to X3 (design D #exceptions).",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "owner", "ends"],
+            "properties": {
+              "id": {
+                "enum": ["X1", "X2", "X3"]
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "ends": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  {
+                    "const": "TBC"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "apim": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sku", "capacity", "publisher"],
+          "properties": {
+            "sku": {
+              "enum": [
+                "Developer",
+                "Basic",
+                "Standard",
+                "Premium",
+                "BasicV2",
+                "StandardV2",
+                "PremiumV2"
+              ]
+            },
+            "capacity": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30
+            },
+            "publisher": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "email"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "email": {
+                  "description": "A shared mailbox, never a person's address.",
+                  "type": "string",
+                  "format": "email"
+                }
+              }
+            }
+          }
+        },
+        "foundry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["regions"],
+          "properties": {
+            "regions": {
+              "description": "One Foundry account per region. The first must be UK South, which holds every project; Sweden Central holds EU Data Zone deployments (D03).",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": ["uksouth", "swedencentral"]
+              }
+            }
+          }
+        },
+        "key_vault": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["soft_delete_retention_days"],
+          "properties": {
+            "soft_delete_retention_days": {
+              "type": "integer",
+              "minimum": 7,
+              "maximum": 90
+            }
+          }
+        },
+        "log_analytics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "retention_in_days",
+            "daily_quota_gb",
+            "subscription_activity_log"
+          ],
+          "properties": {
+            "retention_in_days": {
+              "type": "integer",
+              "minimum": 30,
+              "maximum": 730
+            },
+            "daily_quota_gb": {
+              "description": "Daily ingestion cap in GB; null for none.",
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              ]
+            },
+            "subscription_activity_log": {
+              "type": "boolean"
+            }
+          }
+        },
+        "application_insights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sampling_percentage"],
+          "properties": {
+            "sampling_percentage": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "identities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["portal_api_principal_object_id"],
+          "properties": {
+            "portal_api_principal_object_id": {
+              "description": "Service principal object ID of id-aip-backend-{env}: Key Vault Secrets Officer on the tenants vault and co-owner of team registrations.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

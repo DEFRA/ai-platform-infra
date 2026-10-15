@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pin.schema.json",
+  "title": "AI Platform platform pin",
+  "description": "environments/{env}/platform.json in ai-platform-deployments: the ai-platform-infra release an environment runs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "environment",
+    "release",
+    "sha",
+    "previousRelease",
+    "requestedBy",
+    "operationId",
+    "requestedAt"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "environment": { "type": "string", "pattern": "^[a-z][a-z0-9]{1,15}$" },
+    "release": {
+      "description": "A release tag vX.Y.Z, or the commit SHA itself where the registry entry allows sha refs.",
+      "type": "string",
+      "pattern": "^(v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)|[0-9a-f]{40})$"
+    },
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "previousRelease": {
+      "description": "The release this pin replaces; null for the first pin of an environment.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "string",
+          "pattern": "^(v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)|[0-9a-f]{40})$"
+        }
+      ]
+    },
+    "requestedBy": {
+      "description": "Exactly one identity, never a name or an email address: entra:{object ID} for a person signed in to the portal, github:{user ID} for an engineer who dispatched the change, app:{slug} for automation. Automatic pins are app:{slug} of the release App.",
+      "type": "string",
+      "pattern": "^(entra:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|github:[1-9][0-9]{0,19}|app:[a-z][a-z0-9-]{0,38})$"
+    },
+    "operationId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{7,63}$"
+    },
+    "requestedAt": { "type": "string", "format": "date-time" }
+  }
+}
