@@ -13,6 +13,7 @@ concurrency:
 jobs:
   release:
     uses: DEFRA/ai-platform-workflows/.github/workflows/release.yml@v1
+    secrets: inherit
     permissions:
       contents: read
     with:
