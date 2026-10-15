@@ -16,7 +16,8 @@ already holds Contributor there.
 
 1. The state repositories are internal (D8). Do not apply before they are: apply logs show resource IDs.
 2. Defra Policy in the subscription allows the names, public network access for the Phase 1 platform,
-   API Management Developer and UK South and Sweden Central (plan WS0).
+   API Management Developer and UK South. The DEFRA management group policy Allowed locations refused Sweden Central
+   in `AZR-AIE-SND1` (15 October 2026), so that environment's `azure.foundry.regions` is UK South only.
 3. You know the client ID of the existing app registration that is `id-aip-deploy-{env}` (D5); it is not
    committed anywhere public.
 4. Decide `grant_graph_application_owned_by`: it needs an Entra role that can grant application
