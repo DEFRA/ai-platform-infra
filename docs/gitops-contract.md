@@ -60,7 +60,10 @@ Rules beyond the schema, enforced by `validate`:
   `removed` has an `oauth` block, using federated credentials, client secrets where
   `secretsAllowed`, or both, including for local development. Subscription keys belong to the Research
   tier, never to a team (direction 14 October 2026).
-- OAuth: Entra enabled in the registry entry. A CDP federation names only its CDP service; Terraform
+- OAuth: Entra enabled in the registry entry. Setting the entry's `entra.teamRegistrations` to `false`
+  (default `true`) skips only each team's app registration, an interim switch for a deploy identity
+  that cannot yet create app registrations: the team's project, deployments and API are still applied,
+  its federations must be empty, and external clients still work. A CDP federation names only its CDP service; Terraform
   derives the issuer, the subject `arn:aws:iam::{account}:role/{service}` and the audience from the
   environment's registry entry, so a team file holds nothing environment-specific for CDP. Azure
   federations use the Defra tenant issuer and a principal ID; at most 20 federations and 40 clients;

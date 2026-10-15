@@ -64,6 +64,11 @@ variable "owner_object_ids" {
   type        = list(string)
 }
 
+variable "registration_enabled" {
+  description = "Whether to create the team's Entra app registration. False leaves the team's API with only its external clients."
+  type        = bool
+}
+
 
 variable "tags" {
   type = map(string)

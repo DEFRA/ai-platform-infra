@@ -61,7 +61,7 @@ function explainedRemovals(before, after) {
 
       if (!next || federationKey(next) !== federationKey(federation)) {
         prefixes.push(
-          `${team}.module.registration.` +
+          `${team}.module.registration[0].` +
             'azuread_application_federated_identity_credential.federation' +
             `["${federation.name}"]`
         )

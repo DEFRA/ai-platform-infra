@@ -55,9 +55,9 @@ override_data {
 }
 
 variables {
-  environment   = "infradev"
-  release       = "v0.5.0"
-  entra_enabled = true
+  environment        = "infradev"
+  release            = "v0.5.0"
+  team_registrations = true
   cdp = {
     issuer     = "https://00000000-0000-0000-0000-000000000000.tokens.sts.global.api.aws"
     awsAccount = "000000000000"
@@ -233,11 +233,32 @@ run "refuses_a_subscription_key_team" {
   expect_failures = [var.teams]
 }
 
-run "refuses_oauth_where_entra_is_disabled" {
+run "applies_teams_without_registrations" {
+  command = apply
+
+  variables {
+    team_registrations = false
+    teams = {
+      alpha = var.teams.alpha
+    }
+  }
+
+  assert {
+    condition     = output.teams.alpha.registration == null
+    error_message = "no registration is created where team registrations are off"
+  }
+
+  assert {
+    condition     = output.teams.alpha.deployments["gpt-5-nano"].name == "alpha-gpt-5-nano" && output.teams.alpha.api.url == "https://apim-aip-infradev.azure-api.net/alpha"
+    error_message = "the team's deployments and API are still applied"
+  }
+}
+
+run "refuses_a_federation_where_team_registrations_are_off" {
   command = plan
 
   variables {
-    entra_enabled = false
+    team_registrations = false
   }
 
   expect_failures = [var.teams]

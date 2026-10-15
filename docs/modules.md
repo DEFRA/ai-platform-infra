@@ -9,12 +9,12 @@ a parameters change only.
 
 ## Roots and parameters
 
-| Root        | State               | Reads                                                                                                      |
-| ----------- | ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `names`     | None (local)        | `params_file`: the merged parameters below                                                                 |
-| `bootstrap` | `bootstrap.tfstate` | `params_file` (through `names`), plus the deploy identity's inputs                                         |
-| `platform`  | `platform.tfstate`  | `-var-file` the merged parameters; `release`, `entra_enabled`                                              |
-| `tenants`   | `tenants.tfstate`   | The platform state's outputs, the team files bundled by `aip-checks`, and the registry entry's `cdp` trust |
+| Root        | State               | Reads                                                                                                                           |
+| ----------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `names`     | None (local)        | `params_file`: the merged parameters below                                                                                      |
+| `bootstrap` | `bootstrap.tfstate` | `params_file` (through `names`), plus the deploy identity's inputs                                                              |
+| `platform`  | `platform.tfstate`  | `-var-file` the merged parameters; `release`, `entra_enabled`                                                                   |
+| `tenants`   | `tenants.tfstate`   | The platform state's outputs, the team files bundled by `aip-checks`, the registry entry's `cdp` trust and `team_registrations` |
 
 Parameters live in `ai-platform-environments`: `global.tfvars.json` holds what every environment
 shares and `environments/{env}/platform.tfvars.json` the environment's own. Codes every cloud shares sit

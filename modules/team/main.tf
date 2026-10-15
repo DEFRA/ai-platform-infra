@@ -54,7 +54,7 @@ locals {
   ]
 
   client_ids = concat(
-    [module.registration.client_id],
+    module.registration[*].client_id,
     [for client in var.team.oauth.externalClients : client.clientId],
   )
 }
@@ -87,6 +87,7 @@ module "deployment" {
 
 module "registration" {
   source = "../entra-team-app"
+  count  = var.registration_enabled ? 1 : 0
 
   display_name     = format(var.names.registration, local.slug)
   owner_object_ids = var.owner_object_ids
