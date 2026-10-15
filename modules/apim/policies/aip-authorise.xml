@@ -1,0 +1,72 @@
+<fragment>
+  <!--
+    aip-authorise: design E request checks 1 to 3, shared by every OAuth team API.
+    The including team policy sets aipClients (comma-separated client IDs) and
+    aipAccess (access windows) from its own named values first. Named values hold
+    fixed formats only (GUIDs, ISO 8601 UTC times, status words), because they are
+    substituted into the expressions below.
+    Access window entries: clientId|status|validFrom|expiresAt, separated by ";",
+    where status is active or suspended and expiresAt may be untilRevoked. Times
+    are parsed as DateTimeOffset because APIM does not allow converting a DateTime to UTC.
+    GET /whoami passes steps 1 and 2 only, so a client can check its setup.
+  -->
+  <validate-azure-ad-token tenant-id="{{${tenant_id_named_value}}}" header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="invalid-token" output-token-variable-name="aipToken">
+    <audiences>
+      <audience>{{${api_audience_named_value}}}</audience>
+    </audiences>
+    <required-claims>
+      <claim name="ver" match="all">
+        <value>2.0</value>
+      </claim>
+      <claim name="idtyp" match="all">
+        <value>app</value>
+      </claim>
+    </required-claims>
+  </validate-azure-ad-token>
+  <set-variable name="aipClientId" value="@(((Jwt)context.Variables["aipToken"]).Claims.GetValueOrDefault("azp", ""))" />
+  <choose>
+    <when condition="@{
+      var client = (string)context.Variables["aipClientId"];
+      var clients = ((string)context.Variables["aipClients"]).Split(',');
+      var denied = "{{${deny_list_named_value}}}".Split(',');
+      return string.IsNullOrEmpty(client) || !clients.Contains(client) || denied.Contains(client);
+    }">
+      <return-response>
+        <set-status code="403" reason="Forbidden" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-body>{"code":"client-not-granted"}</set-body>
+      </return-response>
+    </when>
+  </choose>
+  <set-variable name="aipWindow" value="@{
+    var client = (string)context.Variables["aipClientId"];
+    var now = context.Timestamp;
+    foreach (var entry in ((string)context.Variables["aipAccess"]).Split(';')) {
+      var parts = entry.Split('|');
+      if (parts.Length != 4 || parts[0] != client) { continue; }
+      if (parts[1] != "active") { return "grant-suspended"; }
+      if (DateTimeOffset.Parse(parts[2]) > now) { return "grant-suspended"; }
+      if (parts[3] == "untilRevoked") { return "ok"; }
+      if (now >= DateTimeOffset.Parse(parts[3])) { return "grant-expired"; }
+      return "ok";
+    }
+    return "grant-suspended";
+  }" />
+  <choose>
+    <when condition="@(context.Operation.Id != "whoami")">
+      <choose>
+        <when condition="@((string)context.Variables["aipWindow"] != "ok")">
+          <return-response>
+            <set-status code="403" reason="Forbidden" />
+            <set-header name="Content-Type" exists-action="override">
+              <value>application/json</value>
+            </set-header>
+            <set-body>@("{\"code\":\"" + (string)context.Variables["aipWindow"] + "\"}")</set-body>
+          </return-response>
+        </when>
+      </choose>
+    </when>
+  </choose>
+</fragment>
