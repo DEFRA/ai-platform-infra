@@ -27,6 +27,12 @@ variable "grant_role_assignment_admin" {
   default     = true
 }
 
+variable "grant_contributor" {
+  description = "Give the deploy identity Contributor, at the existing resource group when `existing_resource_group` is set and at the subscription otherwise. Set false where it already holds Contributor there (D10: only if missing)."
+  type        = bool
+  default     = true
+}
+
 variable "grant_graph_application_owned_by" {
   description = "Grant Microsoft Graph Application.ReadWrite.OwnedBy to the deploy identity (needs an Entra role that can consent; D4, D12A)."
   type        = bool

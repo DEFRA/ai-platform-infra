@@ -8,7 +8,9 @@ owns every change.
 Where the subscription's resource groups are made for the team (SND1 before the gate before DEV), set
 `existing_resource_group` under `azure` in the environment's parameters: the platform and its state then go into that
 group, and you need Contributor and User Access Administrator (or Role Based Access Control
-Administrator) on the group rather than the subscription.
+Administrator) on the group rather than the subscription. The bootstrap gives the deploy identity Contributor at that
+group, or at the subscription when `existing_resource_group` is unset; set `grant_contributor` to `false` where it
+already holds Contributor there.
 
 ## Before you start
 

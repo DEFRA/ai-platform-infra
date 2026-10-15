@@ -41,6 +41,33 @@ run "keeps_state_and_role_administration_in_an_existing_resource_group" {
     condition     = endswith(azurerm_role_assignment.deploy_rbac_administrator[0].scope, "/resourceGroups/SNDAIEAIPRGP1401")
     error_message = "role administration is scoped to the existing resource group"
   }
+
+  assert {
+    condition     = endswith(azurerm_role_assignment.deploy_contributor[0].scope, "/resourceGroups/SNDAIEAIPRGP1401")
+    error_message = "Contributor is scoped to the existing resource group, never the subscription"
+  }
+}
+
+run "grants_contributor_at_the_subscription_without_an_existing_resource_group" {
+  command = plan
+
+  assert {
+    condition     = !strcontains(azurerm_role_assignment.deploy_contributor[0].scope, "/resourceGroups/")
+    error_message = "with no resource group made in advance the platform creates its own, so Contributor is at the subscription"
+  }
+}
+
+run "grants_no_contributor_where_the_deploy_identity_holds_it" {
+  command = plan
+
+  variables {
+    grant_contributor = false
+  }
+
+  assert {
+    condition     = length(azurerm_role_assignment.deploy_contributor) == 0
+    error_message = "grant_contributor = false must create no Contributor assignment"
+  }
 }
 
 run "refuses_a_missing_state_repository" {
