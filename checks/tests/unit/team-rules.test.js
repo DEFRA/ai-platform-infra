@@ -156,16 +156,28 @@ describe('checkTeamFile', () => {
 
   test('refuses a model that is not offered to teams', () => {
     const document = {
-      ...withDeployment({ slug: 'gpt-4o' }),
-      gateway: { ...alphaTeam().gateway, allowedDeployments: ['gpt-4o'] }
+      ...withDeployment({ slug: 'gpt-4o-2' }),
+      gateway: { ...alphaTeam().gateway, allowedDeployments: ['gpt-4o-2'] }
     }
 
     expect(check(document)).toEqual(
       expect.arrayContaining([
-        'deployment gpt-4o is not eligible for teams',
-        'deployment gpt-4o is not offered in infradev'
+        'deployment gpt-4o-2 is not eligible for teams',
+        'deployment gpt-4o-2 is not offered in infradev'
       ])
     )
+  })
+
+  test('accepts gpt-4o as a UK South team deployment in infradev', () => {
+    const document = {
+      ...withDeployment({ slug: 'gpt-4o', sku: 'Standard' }),
+      gateway: { ...alphaTeam().gateway, allowedDeployments: ['gpt-4o'] }
+    }
+    const params = environmentParams({
+      azure: { foundry: { regions: ['uksouth'] } }
+    })
+
+    expect(check(document, { params })).toEqual([])
   })
 
   test('refuses a SKU the catalogue does not allow for teams', () => {
