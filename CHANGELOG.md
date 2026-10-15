@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.6.0...v0.7.0) (2026-10-15)
+
+
+### Features
+
+* add a UK South team SKU to gpt-4o ([#14](https://github.com/DEFRA/ai-platform-infra/issues/14)) ([f232592](https://github.com/DEFRA/ai-platform-infra/commit/f232592707be6f5c3e99f120c05444312f9b4f9a))
+
 ## [0.6.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.5.0...v0.6.0) (2026-10-15)
 
 
