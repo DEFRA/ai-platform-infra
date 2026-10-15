@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.5.0...v0.6.0) (2026-10-15)
+
+
+### Features
+
+* add entra.teamRegistrations to skip team app registrations ([#12](https://github.com/DEFRA/ai-platform-infra/issues/12)) ([4e9a574](https://github.com/DEFRA/ai-platform-infra/commit/4e9a574ccfd3aef0e3d6ee0385b966f9097aaa26))
+
 ## [0.5.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.4.0...v0.5.0) (2026-10-15)
 
 
