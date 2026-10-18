@@ -167,7 +167,7 @@ resource "azurerm_api_management_backend" "foundry" {
   api_management_name = module.apim.name
   resource_group_name = local.resource_group_name
   protocol            = "http"
-  url                 = each.value.openai_endpoint
+  url                 = "https://${each.value.openai_host}"
   description         = "Microsoft Foundry account ${each.value.name} (${each.key})"
 
   tls {
