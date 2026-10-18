@@ -99,13 +99,32 @@ run "locks_the_state_account_from_the_first_pass_and_nothing_else" {
   command = plan
 
   assert {
-    condition     = azurerm_management_lock.state_account.lock_level == "CanNotDelete" && azurerm_management_lock.state_account.name == "aip-no-delete"
+    condition     = length(azurerm_management_lock.state_account) == 1 && azurerm_management_lock.state_account[0].lock_level == "CanNotDelete" && azurerm_management_lock.state_account[0].name == "aip-no-delete"
     error_message = "the state account is locked against deletion as soon as it exists"
   }
 
   assert {
     condition     = length(azurerm_management_lock.platform) == 0
     error_message = "the platform's resources are locked on a second pass only, once they exist"
+  }
+}
+
+run "lifts_the_state_lock_for_the_apply_that_revokes_the_operator" {
+  command = plan
+
+  variables {
+    operator_state_access = false
+    lock_state_account    = false
+  }
+
+  assert {
+    condition     = length(azurerm_management_lock.state_account) == 0 && length(azurerm_role_assignment.operator_state) == 0
+    error_message = "the operator's assignment sits under the lock, so the apply that removes it runs with the lock lifted"
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.deploy_state.principal_type == "ServicePrincipal"
+    error_message = "the deploy identity keeps its state access through the revocation"
   }
 }
 

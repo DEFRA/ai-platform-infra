@@ -40,7 +40,13 @@ variable "grant_graph_application_owned_by" {
 }
 
 variable "operator_state_access" {
-  description = "Storage Blob Data Contributor for the operator running the bootstrap, to migrate its state; set false afterwards (no standing human access)."
+  description = "Storage Blob Data Contributor for the operator running the bootstrap, to migrate its state; set false afterwards (no standing human access). Revoking it needs lock_state_account=false in the same apply, because the assignment sits under the locked account."
+  type        = bool
+  default     = true
+}
+
+variable "lock_state_account" {
+  description = "CanNotDelete lock on the state storage account, from the first apply. Set false only for the apply that revokes a role assignment under it, such as the operator's, and relock on the next."
   type        = bool
   default     = true
 }

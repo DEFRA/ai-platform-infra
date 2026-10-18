@@ -112,11 +112,21 @@ resource "azurerm_storage_container" "state" {
 # inherits it, so a lock there would refuse the team APIs, projects and
 # deployments the tenants apply removes by design; prevent_destroy and
 # plan-guard cover them (docs/bootstrap.md).
+#
+# The role assignments on the state container inherit the lock too, so
+# revoking the operator's access means lifting the lock first: the lock
+# depends on that assignment, so one apply with lock_state_account=false and
+# operator_state_access=false removes the lock and then the assignment, and
+# the next apply relocks (docs/bootstrap.md).
 resource "azurerm_management_lock" "state_account" {
+  count = var.lock_state_account ? 1 : 0
+
   name       = "aip-no-delete"
   scope      = azurerm_storage_account.state.id
   lock_level = "CanNotDelete"
   notes      = "Terraform state of the AI Platform; removed only to decommission the environment."
+
+  depends_on = [azurerm_role_assignment.operator_state, azurerm_role_assignment.deploy_state]
 }
 
 data "azurerm_key_vault" "platform" {
