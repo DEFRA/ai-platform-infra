@@ -12,10 +12,14 @@ locals {
   ])
   primary = var.platform.foundry_accounts[local.primary_region]
 
+  # A deployment's hosting platform is the catalogue offering's, resolved by
+  # the tenants root; each platform has its own deployment module below and
+  # its own backend fragment at the gateway (design C #model-access).
   deployments = {
     for deployment in var.team.deployments : deployment.slug => {
       deployment = deployment
       model      = var.catalogue[deployment.slug]
+      hosting    = var.catalogue[deployment.slug].hosting.platform
       sku = one([
         for sku in var.catalogue[deployment.slug].skus : sku
         if sku.name == deployment.sku && contains(try(sku.tiers, ["research"]), "team")
@@ -23,11 +27,21 @@ locals {
     }
   }
 
+  foundry_deployments = {
+    for slug, item in local.deployments : slug => item if item.hosting == "foundry"
+  }
+
   regions = {
-    for slug, item in local.deployments : slug => [
+    for slug, item in local.foundry_deployments : slug => [
       for region in item.sku.regions : region
       if contains(keys(var.platform.foundry_accounts), region)
     ][0]
+  }
+
+  # Deployment names and the gateway backend each slug routes to, by hosting.
+  deployment_names = { for slug, deployment in module.deployment : slug => deployment.name }
+  backend_ids = {
+    for slug, item in local.foundry_deployments : slug => var.platform.backends.foundry[local.regions[slug]]
   }
 
   tags = merge(var.tags, {
@@ -59,6 +73,26 @@ locals {
   )
 }
 
+# Blocking: a deployment on a hosting platform this release has no module
+# for fails the plan with its name, rather than silently deploying nothing.
+resource "terraform_data" "hosting_supported" {
+  input = [for slug, item in local.deployments : "${slug}:${item.hosting}"]
+
+  lifecycle {
+    precondition {
+      condition = alltrue([
+        for item in local.deployments : contains(keys(var.platform.backends), item.hosting)
+      ])
+      error_message = "Team ${local.slug} grants a model on a hosting platform this release does not deploy: ${join(", ", [for slug, item in local.deployments : "${slug} (${item.hosting})" if !contains(keys(var.platform.backends), item.hosting)])}."
+    }
+
+    precondition {
+      condition     = alltrue([for item in local.foundry_deployments : item.deployment.capacity != null])
+      error_message = "A Foundry deployment needs capacity: ${join(", ", [for slug, item in local.foundry_deployments : slug if item.deployment.capacity == null])}."
+    }
+  }
+}
+
 module "project" {
   source = "../foundry-project"
 
@@ -71,7 +105,7 @@ module "project" {
 
 module "deployment" {
   source   = "../foundry-deployment"
-  for_each = local.deployments
+  for_each = local.foundry_deployments
 
   name       = format(var.names.deployment, local.slug, each.key)
   account_id = var.platform.foundry_accounts[local.regions[each.key]].id
@@ -83,6 +117,8 @@ module "deployment" {
     name    = each.value.model.modelName
     version = each.value.model.version
   }
+
+  depends_on = [terraform_data.hosting_supported]
 }
 
 module "registration" {
@@ -100,11 +136,11 @@ module "registration" {
 module "api" {
   source = "../apim-team-api"
 
-  team_slug          = local.slug
-  api_name           = format(var.names.api, local.slug)
-  api_management     = var.platform.api_management
-  client_ids         = local.client_ids
-  authorise_fragment = var.platform.authorise_fragment
+  team_slug      = local.slug
+  api_name       = format(var.names.api, local.slug)
+  api_management = var.platform.api_management
+  client_ids     = local.client_ids
+  fragments      = var.platform.fragments
 
   named_values = {
     clients       = format(var.names.clients_named_value, local.slug)
@@ -119,8 +155,9 @@ module "api" {
   models = [
     for slug in var.team.gateway.allowedDeployments : {
       slug            = slug
-      deployment_name = module.deployment[slug].name
-      endpoint        = var.platform.foundry_accounts[local.regions[slug]].openai_endpoint
+      deployment_name = local.deployment_names[slug]
+      hosting         = local.deployments[slug].hosting
+      backend_id      = local.backend_ids[slug]
       api_profile     = var.catalogue[slug].apiProfile
     }
   ]

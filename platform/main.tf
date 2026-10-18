@@ -98,7 +98,7 @@ module "apim" {
     tenant_id    = module.naming.named_values.tenant_id
     api_audience = module.naming.named_values.api_audience
     deny_list    = module.naming.named_values.deny_list
-    authorise    = module.naming.fragments.authorise
+    fragments    = module.naming.fragments
   }
 }
 
@@ -155,4 +155,23 @@ module "foundry" {
   gateway_principal_id       = module.apim.principal_id
   gateway_role_definition_id = local.roles.foundry_user
   tags                       = local.tags
+}
+
+# One named backend per hosting target; a team API selects it by ID, so
+# hosting-specific authentication lives in the platform's fragment for that
+# platform, never in a team's policy (design D #gateway).
+resource "azurerm_api_management_backend" "foundry" {
+  for_each = module.foundry
+
+  name                = format(module.naming.backends.foundry, each.key)
+  api_management_name = module.apim.name
+  resource_group_name = local.resource_group_name
+  protocol            = "http"
+  url                 = each.value.openai_endpoint
+  description         = "Microsoft Foundry account ${each.value.name} (${each.key})"
+
+  tls {
+    validate_certificate_chain = true
+    validate_certificate_name  = true
+  }
 }

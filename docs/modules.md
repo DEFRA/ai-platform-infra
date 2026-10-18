@@ -31,23 +31,28 @@ state then go into it.
 Diagnostic settings for every platform resource, and the subscription activity log, are in one place:
 [`platform/diagnostics.tf`](../platform/diagnostics.tf).
 
-| Module                                                | Creates                                                                                                   | Used by                 |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------- |
-| [`naming`](../modules/naming)                         | Nothing: CCoE names and team format strings                                                               | Every root              |
-| [`roles`](../modules/roles)                           | Nothing: built-in role definition IDs, the only place a role GUID appears                                 | `platform`, `bootstrap` |
-| [`log-analytics`](../modules/log-analytics)           | Log Analytics (local auth off), workspace-based Application Insights (local auth off)                     | `platform`              |
-| [`key-vault`](../modules/key-vault)                   | A vault with RBAC, purge protection and data-plane roles                                                  | `platform`              |
-| [`apim`](../modules/apim)                             | API Management, Entra-authenticated logger, W3C diagnostics without bodies, named values, `aip-authorise` | `platform`              |
-| [`foundry-account`](../modules/foundry-account)       | A Foundry (AI Services) account per region, local auth off; the gateway as Foundry User                   | `platform`              |
-| [`entra-api-audience`](../modules/entra-api-audience) | `api-aip-{env}`: v2 tokens with `idtyp`, identifier URI, service principal                                | `platform`              |
-| [`team`](../modules/team)                             | One team: the four modules below, tagged with the team, service code, operation and source commit         | `tenants`               |
-| [`foundry-project`](../modules/foundry-project)       | The team's Foundry project in the primary account                                                         | `team`                  |
-| [`foundry-deployment`](../modules/foundry-deployment) | A pinned, non-Global deployment in the account of the SKU's region                                        | `team`                  |
-| [`apim-team-api`](../modules/apim-team-api)           | The API at `/{slug}`, its operations, client list and access window named values, and generated policy    | `team`                  |
-| [`entra-team-app`](../modules/entra-team-app)         | `app-aip-{env}-{slug}` with federated credentials; ignores passwords and `account_enabled`                | `team`                  |
+| Module                                                | Creates                                                                                                                                                            | Used by                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| [`naming`](../modules/naming)                         | Nothing: CCoE names and team format strings                                                                                                                        | Every root              |
+| [`roles`](../modules/roles)                           | Nothing: built-in role definition IDs, the only place a role GUID appears                                                                                          | `platform`, `bootstrap` |
+| [`log-analytics`](../modules/log-analytics)           | Log Analytics (local auth off), workspace-based Application Insights (local auth off)                                                                              | `platform`              |
+| [`key-vault`](../modules/key-vault)                   | A vault with RBAC, purge protection and data-plane roles                                                                                                           | `platform`              |
+| [`apim`](../modules/apim)                             | API Management, Entra-authenticated logger, W3C diagnostics without bodies, named values, the global guard and the shared fragments                                | `platform`              |
+| [`foundry-account`](../modules/foundry-account)       | A Foundry (AI Services) account per region, local auth off; the gateway as Foundry User                                                                            | `platform`              |
+| [`entra-api-audience`](../modules/entra-api-audience) | `api-aip-{env}`: v2 tokens with `idtyp`, identifier URI, service principal                                                                                         | `platform`              |
+| [`team`](../modules/team)                             | One team: the four modules below, tagged with the team, service code, operation and source commit; deploys each model on its catalogue offering's hosting platform | `tenants`               |
+| [`foundry-project`](../modules/foundry-project)       | The team's Foundry project in the primary account                                                                                                                  | `team`                  |
+| [`foundry-deployment`](../modules/foundry-deployment) | A pinned, non-Global deployment in the account of the SKU's region                                                                                                 | `team`                  |
+| [`apim-team-api`](../modules/apim-team-api)           | The API at `/{slug}`, its operations, client list and access window named values, and its short policy                                                             | `team`                  |
+| [`entra-team-app`](../modules/entra-team-app)         | `app-aip-{env}-{slug}` with federated credentials; ignores passwords and `account_enabled`                                                                         | `team`                  |
+
+The platform root also creates one named API Management backend per Foundry account
+(`aip-foundry-{region}`), which a team API selects by ID; a future hosting platform adds its own
+backends, its own deployment module and its own backend fragment, and no team file changes.
 
 `prevent_destroy` protects API Management, the Foundry accounts, both vaults, the workspace and the state
-account. Tests run with mock providers: `terraform -chdir=<dir> test`.
+account; the bootstrap adds `CanNotDelete` locks to the vaults, the workspace and the state account
+([bootstrap](bootstrap.md)). Tests run with mock providers: `terraform -chdir=<dir> test`.
 
 ## Naming
 
@@ -72,11 +77,14 @@ Those use design D's logical labels (`apim-aip-infradev`, `aif-aip-infradev`, `a
 
 ## Gateway policy
 
-Team APIs follow design E `#enforcement`. The team tier is OAuth only, so every team API takes a token,
-never a subscription key, and runs the shared `aip-authorise` fragment: token
-(401), client list and deny list (403 `client-not-granted`), access window (403 `grant-suspended` or
-`grant-expired`). Every team then gets the model allow-list (403 `model-not-granted`), request and token
-limits, the token metric, and a call to Foundry as the gateway's identity with the caller's credentials
-removed. Callers name a catalogue slug, in the path (`/openai/deployments/{slug}/chat/completions`) or
-the body `model`; the policy rewrites it to the team's derived deployment. Prompt and response logging
-stays off (design G).
+Policy is layered the way API Management evaluates it, global then API, with `<base />` joining them
+(direction 18 October 2026, design C `#model-access`):
+
+| Layer                             | Holds                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Global policy (`apim`)            | The guard: `aip-key-guard` for an API that declared `aipCredentialType` `key` (the Research tier, when it arrives), `aip-authorise` for every other API, then `aipAuthorised`; `forward-request`; response header hygiene. An API with no policy of its own is still OAuth-guarded                                                                                                                                   |
+| Shared fragments (`apim`)         | `aip-authorise` (design E: token 401, client list and deny list 403 `client-not-granted`, access window 403 `grant-suspended` or `grant-expired`); `aip-whoami`; `aip-request-model` (refuses a call the guard did not mark, 401 `not-authorised`, then reads the requested slug); `aip-backend-foundry` (strips the caller's credentials, authenticates as the gateway, rewrites the slug to the team's deployment) |
+| Team API policy (`apim-team-api`) | The team's facts as variables before `<base />` (`aipTeam`, `aipCredentialType` `oauth`, client list, access window, grants), then the shared steps, the generated model routing to a named backend (403 `model-not-granted`), the request and token limits, and the token metric; `tokens-per-minute` takes no policy expression, so the limits are generated per team                                              |
+
+Callers name a catalogue slug, in the path (`/openai/deployments/{slug}/chat/completions`) or
+the body `model`. Prompt and response logging stays off (design G).

@@ -191,15 +191,46 @@ function checkCatalogue(catalogue, validators) {
 }
 
 /**
- * Index of catalogue models by slug.
+ * Catalogue models by slug, each carrying the hosting of its offering, so
+ * rules that depend on where a model runs need no second lookup.
  *
- * @param {{models: Array<{document: object}>}} catalogue - Raw records.
+ * @param {{models: Array<{document: object}>,
+ *   providers: Array<{document: object}>}} catalogue - Raw records.
  * @returns {Map<string, object>} Models keyed by slug.
  */
 function modelsBySlug(catalogue) {
-  return new Map(
-    catalogue.models.map(({ document }) => [document.slug, document])
+  const offerings = new Map(
+    catalogue.providers.flatMap(({ document }) =>
+      document.offerings.map((offering) => [
+        `${document.id}/${offering.id}`,
+        offering
+      ])
+    )
   )
+
+  return new Map(
+    catalogue.models.map(({ document }) => [
+      document.slug,
+      {
+        ...document,
+        hosting: offerings.get(`${document.provider}/${document.offering}`)
+          ?.hosting
+      }
+    ])
+  )
+}
+
+// Hosting platforms whose deployments are sized by a capacity figure.
+const CAPACITY_HOSTINGS = new Set(['foundry'])
+
+/**
+ * Whether a model's hosting platform sizes a deployment by capacity.
+ *
+ * @param {object} model - A model from modelsBySlug.
+ * @returns {boolean} True for Foundry.
+ */
+function needsCapacity(model) {
+  return CAPACITY_HOSTINGS.has(model.hosting?.platform)
 }
 
 export {
@@ -207,5 +238,6 @@ export {
   checkCatalogue,
   loadCatalogue,
   modelsBySlug,
+  needsCapacity,
   skusForTier
 }

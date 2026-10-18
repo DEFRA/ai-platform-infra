@@ -41,12 +41,22 @@ variable "platform" {
       openai_endpoint = string
       primary         = bool
     }))
-    authorise_fragment = string
+    fragments = object({
+      whoami        = string
+      request_model = string
+      backend       = map(string)
+    })
+    backends = map(map(string))
   })
+
+  validation {
+    condition     = contains(keys(var.platform.backends), "foundry") && contains(keys(var.platform.fragments.backend), "foundry")
+    error_message = "The platform publishes a backend per Foundry region and the Foundry backend fragment."
+  }
 }
 
 variable "catalogue" {
-  description = "Catalogue models by slug at the pinned release."
+  description = "Catalogue models by slug at the pinned release, each with the hosting of its offering."
   type        = any
 }
 

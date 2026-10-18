@@ -15,13 +15,19 @@ variable "api_management" {
 }
 
 variable "models" {
-  description = "Granted models: catalogue slug, derived deployment name, gateway backend URL and apiProfile."
+  description = "Granted models: catalogue slug, derived deployment name, the hosting platform, the named backend for it and apiProfile."
   type = list(object({
     slug            = string
     deployment_name = string
-    endpoint        = string
+    hosting         = string
+    backend_id      = string
     api_profile     = string
   }))
+
+  validation {
+    condition     = alltrue([for model in var.models : contains(keys(var.fragments.backend), model.hosting)])
+    error_message = "Every granted model's hosting platform has a backend fragment."
+  }
 }
 
 variable "limits" {
@@ -52,6 +58,11 @@ variable "named_values" {
   })
 }
 
-variable "authorise_fragment" {
-  type = string
+variable "fragments" {
+  description = "The platform's shared fragments: whoami, request_model and the backend fragment per hosting platform (design C #model-access)."
+  type = object({
+    whoami        = string
+    request_model = string
+    backend       = map(string)
+  })
 }

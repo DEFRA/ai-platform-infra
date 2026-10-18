@@ -1,0 +1,26 @@
+<fragment>
+  <!--
+    aip-whoami: GET /whoami answers from the variables the API's policy and the global
+    guard set, so a client can check its setup without reaching a model.
+  -->
+  <choose>
+    <when condition="@(context.Operation.Id == "whoami")">
+      <return-response>
+        <set-status code="200" reason="OK" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-body>@{
+          var granted = context.Variables.GetValueOrDefault<string>("aipGranted", "");
+          var body = new JObject();
+          body["team"] = context.Variables.GetValueOrDefault<string>("aipTeam", "");
+          body["credentialType"] = context.Variables.GetValueOrDefault<string>("aipCredentialType", "oauth");
+          body["clientId"] = context.Variables.GetValueOrDefault<string>("aipClientId", "");
+          body["accessWindow"] = context.Variables.GetValueOrDefault<string>("aipWindow", "");
+          body["allowedDeployments"] = JArray.FromObject(granted.Split(',').Where(slug => slug != ""));
+          return body.ToString();
+        }</set-body>
+      </return-response>
+    </when>
+  </choose>
+</fragment>

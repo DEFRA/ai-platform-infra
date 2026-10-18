@@ -1,41 +1,20 @@
 <policies>
   <inbound>
-    <base />
+    <set-variable name="aipTeam" value="${team}" />
+    <set-variable name="aipCredentialType" value="oauth" />
     <set-variable name="aipClients" value="{{${clients_named_value}}}" />
     <set-variable name="aipAccess" value="{{${access_named_value}}}" />
-    <include-fragment fragment-id="${authorise_fragment}" />
-    <choose>
-      <when condition="@(context.Operation.Id == "whoami")">
-        <return-response>
-          <set-status code="200" reason="OK" />
-          <set-header name="Content-Type" exists-action="override">
-            <value>application/json</value>
-          </set-header>
-          <set-body>@{
-            var body = new JObject();
-            body["team"] = "${team}";
-            body["credentialType"] = "oauth";
-            body["clientId"] = context.Variables.GetValueOrDefault<string>("aipClientId", "");
-            body["accessWindow"] = context.Variables.GetValueOrDefault<string>("aipWindow", "");
-            body["allowedDeployments"] = new JArray(${granted});
-            return body.ToString();
-          }</set-body>
-        </return-response>
-      </when>
-    </choose>
-    <set-variable name="aipRequested" value="@{
-      var fromPath = context.Request.MatchedParameters.GetValueOrDefault("deployment-id", "");
-      if (!string.IsNullOrEmpty(fromPath)) { return fromPath; }
-      if (context.Request.Body == null) { return ""; }
-      var body = context.Request.Body.As<JObject>(preserveContent: true);
-      return body["model"] == null ? "" : body["model"].ToString();
-    }" />
+    <set-variable name="aipGranted" value="${granted}" />
+    <base />
+    <include-fragment fragment-id="${fragments.whoami}" />
+    <include-fragment fragment-id="${fragments.request_model}" />
 %{ if length(models) > 0 ~}
     <choose>
 %{ for model in models ~}
       <when condition="@((string)context.Variables["aipRequested"] == "${model.slug}")">
         <set-variable name="aipDeployment" value="${model.deployment_name}" />
-        <set-backend-service base-url="${model.endpoint}" />
+        <set-variable name="aipHosting" value="${model.hosting}" />
+        <set-backend-service backend-id="${model.backend_id}" />
       </when>
 %{ endfor ~}
       <otherwise>
@@ -64,25 +43,16 @@
       <dimension name="deployment" value="@((string)context.Variables["aipDeployment"])" />
       <dimension name="credentialType" value="oauth" />
     </llm-emit-token-metric>
-    <set-header name="Authorization" exists-action="delete" />
-    <set-header name="api-key" exists-action="delete" />
-    <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
-    <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+%{ for hosting in hostings ~}
     <choose>
-      <when condition="@(context.Request.MatchedParameters.ContainsKey("deployment-id"))">
-        <rewrite-uri template="@("/openai/deployments/" + (string)context.Variables["aipDeployment"] + "/chat/completions")" copy-unmatched-params="true" />
+      <when condition="@((string)context.Variables["aipHosting"] == "${hosting}")">
+        <include-fragment fragment-id="${fragments.backend[hosting]}" />
       </when>
-      <otherwise>
-        <set-body>@{
-          var body = context.Request.Body.As<JObject>(preserveContent: true);
-          body["model"] = (string)context.Variables["aipDeployment"];
-          return body.ToString();
-        }</set-body>
-      </otherwise>
     </choose>
+%{ endfor ~}
   </inbound>
   <backend>
-    <forward-request timeout="300" buffer-response="false" />
+    <base />
   </backend>
   <outbound>
     <base />

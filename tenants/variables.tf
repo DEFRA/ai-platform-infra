@@ -59,7 +59,7 @@ variable "teams" {
     deployments = list(object({
       slug     = string
       sku      = string
-      capacity = number
+      capacity = optional(number)
       status   = string
     }))
     gateway = object({
@@ -124,11 +124,26 @@ variable "teams" {
     error_message = "allowedDeployments holds only the team's own deployments in Phase 1."
   }
 
+  # The SKU and capacity words belong to the hosting platform (Foundry:
+  # Standard, DataZoneStandard, ProvisionedManaged with capacity in thousands
+  # of tokens per minute); the catalogue decides which are offered and the
+  # team module which are needed. Only the platform-neutral rules live here.
   validation {
     condition = alltrue(flatten([
-      for team in var.teams : [for d in team.deployments : !startswith(d.sku, "Global") && d.capacity >= 1]
+      for team in var.teams : [
+        for d in team.deployments : can(regex("^[A-Za-z][A-Za-z0-9-]{0,63}$", d.sku)) && !startswith(d.sku, "Global") && (d.capacity == null || d.capacity >= 1)
+      ]
     ]))
-    error_message = "Team deployments use non-Global SKUs (D03) with capacity of at least 1."
+    error_message = "A deployment names a non-Global SKU (D03) and, when it has capacity, at least 1."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for team in var.teams : [
+        for d in team.deployments : try(local.catalogue[d.slug].hosting.platform, "") != "foundry" || d.capacity != null
+      ]
+    ]))
+    error_message = "A deployment on Foundry needs capacity, in thousands of tokens per minute."
   }
 
   validation {

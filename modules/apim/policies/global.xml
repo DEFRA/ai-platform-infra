@@ -1,0 +1,28 @@
+<policies>
+  <inbound>
+    <!--
+      Global guard (design C #model-access, direction 18 October 2026): every API on the
+      gateway is authorised here, keyed on the credential tier its own policy declared in
+      aipCredentialType before <base />. Nothing declared means oauth, so an API with no
+      policy of its own still needs a valid token for a granted client, and the shared
+      request steps refuse to route anything this guard has not marked aipAuthorised.
+    -->
+    <choose>
+      <when condition="@(context.Variables.GetValueOrDefault<string>("aipCredentialType", "oauth") == "key")">
+        <include-fragment fragment-id="${key_guard_fragment}" />
+      </when>
+      <otherwise>
+        <include-fragment fragment-id="${authorise_fragment}" />
+      </otherwise>
+    </choose>
+    <set-variable name="aipAuthorised" value="true" />
+  </inbound>
+  <backend>
+    <forward-request timeout="300" buffer-response="false" />
+  </backend>
+  <outbound>
+    <set-header name="X-Powered-By" exists-action="delete" />
+    <set-header name="X-AspNet-Version" exists-action="delete" />
+  </outbound>
+  <on-error />
+</policies>

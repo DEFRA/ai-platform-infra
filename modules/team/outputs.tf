@@ -8,9 +8,11 @@ output "resources" {
     }
     deployments = {
       for slug, deployment in module.deployment : slug => {
-        id     = deployment.id
-        name   = deployment.name
-        region = local.regions[slug]
+        id      = deployment.id
+        name    = deployment.name
+        region  = local.regions[slug]
+        hosting = local.deployments[slug].hosting
+        backend = local.backend_ids[slug]
       }
     }
     api = {

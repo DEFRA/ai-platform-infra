@@ -68,8 +68,19 @@ variable "names" {
     tenant_id    = string
     api_audience = string
     deny_list    = string
-    authorise    = string
+    fragments = object({
+      authorise     = string
+      key_guard     = string
+      whoami        = string
+      request_model = string
+      backend       = map(string)
+    })
   })
+
+  validation {
+    condition     = contains(keys(var.names.fragments.backend), "foundry")
+    error_message = "names.fragments.backend names the fragment for every hosting platform this release supports: foundry."
+  }
 }
 
 variable "telemetry_role_definition_id" {

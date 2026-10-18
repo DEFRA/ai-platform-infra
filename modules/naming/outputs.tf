@@ -29,9 +29,22 @@ output "named_values" {
 }
 
 output "fragments" {
-  description = "Platform policy fragments in API Management."
+  description = "Platform policy fragments in API Management: the guards the global policy includes, and the shared steps every team API includes (design C #model-access)."
   value = {
-    authorise = "${local.service}-authorise"
+    authorise     = "${local.service}-authorise"
+    key_guard     = "${local.service}-key-guard"
+    whoami        = "${local.service}-whoami"
+    request_model = "${local.service}-request-model"
+    backend = {
+      foundry = "${local.service}-backend-foundry"
+    }
+  }
+}
+
+output "backends" {
+  description = "Format strings for API Management backends by hosting platform; format() them with the region."
+  value = {
+    foundry = "${local.service}-foundry-%s"
   }
 }
 

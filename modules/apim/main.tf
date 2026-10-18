@@ -124,7 +124,7 @@ resource "azurerm_api_management_named_value" "deny_list" {
 }
 
 resource "azurerm_api_management_policy_fragment" "authorise" {
-  name              = var.names.authorise
+  name              = var.names.fragments.authorise
   api_management_id = azurerm_api_management.this.id
   format            = "rawxml"
   description       = "Shared OAuth checks for every team API: token, client list, deny list and access window (design E)."
@@ -139,4 +139,39 @@ resource "azurerm_api_management_policy_fragment" "authorise" {
     azurerm_api_management_named_value.api_audience,
     azurerm_api_management_named_value.deny_list,
   ]
+}
+
+# The fragments the global policy and every team API include; each file is
+# plain XML with no template values.
+locals {
+  shared_fragments = {
+    key_guard     = { name = var.names.fragments.key_guard, file = "aip-key-guard.xml", description = "Key tier guard: refuses a subscription past its end date (design C)." }
+    whoami        = { name = var.names.fragments.whoami, file = "aip-whoami.xml", description = "GET /whoami for every team API." }
+    request_model = { name = var.names.fragments.request_model, file = "aip-request-model.xml", description = "Refuses an unauthorised call, then reads the requested catalogue slug." }
+    backend_foundry = {
+      name        = var.names.fragments.backend.foundry
+      file        = "aip-backend-foundry.xml"
+      description = "Last steps for a model on Microsoft Foundry: strip caller credentials, authenticate as the gateway, map the slug to the deployment."
+    }
+  }
+}
+
+resource "azurerm_api_management_policy_fragment" "shared" {
+  for_each = local.shared_fragments
+
+  name              = each.value.name
+  api_management_id = azurerm_api_management.this.id
+  format            = "rawxml"
+  description       = each.value.description
+  value             = file("${path.module}/policies/${each.value.file}")
+}
+
+# The global guard: every API is authorised here, keyed on the credential tier
+# its own policy declared before <base /> (design C #model-access).
+resource "azurerm_api_management_policy" "global" {
+  api_management_id = azurerm_api_management.this.id
+  xml_content = templatefile("${path.module}/policies/global.xml", {
+    authorise_fragment = azurerm_api_management_policy_fragment.authorise.name
+    key_guard_fragment = azurerm_api_management_policy_fragment.shared["key_guard"].name
+  })
 }

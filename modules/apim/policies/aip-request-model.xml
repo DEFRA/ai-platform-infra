@@ -1,0 +1,25 @@
+<fragment>
+  <!--
+    aip-request-model: refuses to route anything the global guard has not authorised
+    (an API policy that lost its <base />), then reads the catalogue slug the caller asks
+    for, from the deployment segment of the path or the body's model field.
+  -->
+  <choose>
+    <when condition="@(!context.Variables.ContainsKey("aipAuthorised"))">
+      <return-response>
+        <set-status code="401" reason="Unauthorized" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-body>{"code":"not-authorised"}</set-body>
+      </return-response>
+    </when>
+  </choose>
+  <set-variable name="aipRequested" value="@{
+    var fromPath = context.Request.MatchedParameters.GetValueOrDefault("deployment-id", "");
+    if (!string.IsNullOrEmpty(fromPath)) { return fromPath; }
+    if (context.Request.Body == null) { return ""; }
+    var body = context.Request.Body.As<JObject>(preserveContent: true);
+    return body["model"] == null ? "" : body["model"].ToString();
+  }" />
+</fragment>
