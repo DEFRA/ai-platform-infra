@@ -205,6 +205,15 @@ const COMMANDS = {
       allowDestroy: values['allow-destroy']
     })
 
+    if (result.overCap) {
+      io.stdout.write(
+        `${result.overridden ? 'allowed by allow_destroy' : 'refused'}: ` +
+          `destroys span ${result.teamsDestroyed.length} teams ` +
+          `(${result.teamsDestroyed.join(', ')}); one team per apply unless ` +
+          'an engineer dispatches allow_destroy\n'
+      )
+    }
+
     for (const violation of result.violations) {
       io.stdout.write(
         `${result.overridden ? 'allowed by allow_destroy' : 'refused'}: ` +

@@ -1,4 +1,4 @@
-import { capacityPolicyFor, skusForTier } from './catalogue.js'
+import { capacityPolicyFor, needsCapacity, skusForTier } from './catalogue.js'
 import { isCanonical } from './canonical-json.js'
 
 const MAX_FILE_BYTES = 60 * 1024
@@ -106,8 +106,26 @@ function checkDeployments(path, document, previous, context) {
       )
     }
 
+    // Capacity is the hosting platform's word: Foundry sizes a deployment by
+    // it; a platform that does not takes none.
+    if (needsCapacity(model) && deployment.capacity === undefined) {
+      problems.push(
+        problem(path, `${label} needs capacity on ${model.hosting.platform}`)
+      )
+    } else if (!needsCapacity(model) && deployment.capacity !== undefined) {
+      problems.push(
+        problem(
+          path,
+          `${label} takes no capacity on ${model.hosting?.platform ?? 'its hosting'}`
+        )
+      )
+    }
+
     const policy = capacityPolicyFor(model, environment)
-    if (deployment.capacity < policy.min || deployment.capacity > policy.max) {
+    if (
+      deployment.capacity !== undefined &&
+      (deployment.capacity < policy.min || deployment.capacity > policy.max)
+    ) {
       problems.push(
         problem(
           path,
@@ -197,6 +215,7 @@ function checkOauth(path, document, entry) {
 
   const problems = []
   const names = new Set()
+  const workloads = new Map()
 
   for (const federation of oauth.federations) {
     if (names.has(federation.name)) {
@@ -204,6 +223,20 @@ function checkOauth(path, document, entry) {
     }
 
     names.add(federation.name)
+
+    // Entra refuses two federated credentials on one registration for the
+    // same issuer and subject, so two names for one workload never apply.
+    const workload = federationKey(federation)
+    if (workloads.has(workload)) {
+      problems.push(
+        problem(
+          path,
+          `federations ${workloads.get(workload)} and ${federation.name} both trust ${workload}`
+        )
+      )
+    }
+
+    workloads.set(workload, federation.name)
     problems.push(...checkFederation(path, federation, entry))
   }
 
@@ -235,6 +268,113 @@ function checkOauth(path, document, entry) {
   }
 
   return problems
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+// Cooling-off by environment class where the registry entry names none
+// (design C #deletion: DEV 2, QA 7, PREPROD and PROD 14, all TBC).
+const COOLING_OFF_BY_CLASS = {
+  'platform-test': 0,
+  sandbox: 0,
+  'consumer-lower': 2,
+  'consumer-production': 14,
+  'shared-service': 14
+}
+
+function isoDate(date) {
+  return date.toISOString().slice(0, 10)
+}
+
+/**
+ * The days a team cools off in pending-removal before it may be removed:
+ * the registry entry's removal.coolingOffDays, else its class's.
+ *
+ * @param {object} entry - Registry entry.
+ * @returns {number} Days.
+ */
+function coolingOffDays(entry) {
+  return entry.removal?.coolingOffDays ?? COOLING_OFF_BY_CLASS[entry.class]
+}
+
+/**
+ * The removal lifecycle (design C #deletion): a team enters pending-removal
+ * with removeAfter at least the environment's cooling-off away, is removed
+ * once that date has passed, and may return to active at any point. Where
+ * the cooling-off is zero (Infradev) an active team may be removed in one
+ * step. Nothing checks a file against itself, so this runs on a change only.
+ *
+ * @param {string} path - Team file path.
+ * @param {object} document - The team file as written.
+ * @param {object | null} previous - The file before the change.
+ * @param {object} entry - Registry entry, for removal.coolingOffDays.
+ * @param {Date} now - The moment of the check.
+ * @returns {Array<{file: string, message: string}>} Problems.
+ */
+function checkLifecycle(path, document, previous, entry, now) {
+  const coolingOff = coolingOffDays(entry)
+  const today = isoDate(now)
+
+  if (document.status === 'pending-removal') {
+    const unchanged =
+      previous?.status === 'pending-removal' &&
+      previous.removeAfter === document.removeAfter
+    const earliest = isoDate(new Date(now.getTime() + coolingOff * DAY_MS))
+
+    if (!unchanged && document.removeAfter < earliest) {
+      return [
+        problem(
+          path,
+          `removeAfter must be ${earliest} or later: ${entry.name} cools off for ${coolingOff} days`
+        )
+      ]
+    }
+  }
+
+  if (document.status === 'removed' && previous?.status !== 'removed') {
+    if (!previous) {
+      return [problem(path, 'a new team is never removed')]
+    }
+
+    if (previous.status === 'pending-removal' && today < previous.removeAfter) {
+      return [problem(path, `removal is scheduled for ${previous.removeAfter}`)]
+    }
+
+    if (previous.status === 'active' && coolingOff > 0) {
+      return [
+        problem(
+          path,
+          `a team is removed only after pending-removal: ${entry.name} cools off for ${coolingOff} days`
+        )
+      ]
+    }
+  }
+
+  return []
+}
+
+/**
+ * Whether a team file may be deleted: only once it is removed, so that the
+ * apply that follows the deletion finds nothing of the team's to destroy.
+ *
+ * @param {string} path - Team file path.
+ * @param {string | null} previousText - The file before the deletion.
+ * @returns {Array<{file: string, message: string}>} Problems.
+ */
+function checkDeletion(path, previousText) {
+  const previous = previousText ? JSON.parse(previousText) : null
+
+  if (previous?.status === 'removed') {
+    return []
+  }
+
+  return [
+    problem(
+      path,
+      previous
+        ? `a ${previous.status} team file is deleted only once it is removed`
+        : 'nothing to delete'
+    )
+  ]
 }
 
 /**
@@ -307,6 +447,18 @@ function checkTeamFile(input) {
     if (document.deployments.length > 0 || document.oauth) {
       problems.push(problem(path, 'a removed team keeps no resources'))
     }
+  }
+
+  if (!input.onMain) {
+    problems.push(
+      ...checkLifecycle(
+        path,
+        document,
+        previous,
+        entry,
+        input.now ?? new Date()
+      )
+    )
   }
 
   problems.push(
@@ -426,8 +578,11 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
 }
 
 export {
+  checkDeletion,
   checkEnvironmentTeams,
+  checkLifecycle,
   checkTeamFile,
+  coolingOffDays,
   federationKey,
   parseTeamPath,
   regionFor

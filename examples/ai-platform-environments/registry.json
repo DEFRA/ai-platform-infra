@@ -20,6 +20,9 @@
         "sha",
         "tag"
       ],
+      "removal": {
+        "coolingOffDays": 0
+      },
       "resetNightly": true,
       "runner": {
         "labels": [

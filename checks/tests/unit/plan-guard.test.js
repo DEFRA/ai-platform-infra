@@ -34,7 +34,9 @@ describe('guardPlan', () => {
     expect(guardPlan({ plan, state: 'tenants' })).toEqual({
       allowed: true,
       violations: [],
-      overridden: false
+      overridden: false,
+      teamsDestroyed: [],
+      overCap: false
     })
   })
 
@@ -52,7 +54,9 @@ describe('guardPlan', () => {
           actions: ['delete']
         }
       ],
-      overridden: false
+      overridden: false,
+      teamsDestroyed: [],
+      overCap: false
     })
   })
 
@@ -87,6 +91,65 @@ describe('guardPlan', () => {
     expect(
       guardPlan({ plan, state: 'tenants', allowDestroy: true })
     ).toMatchObject({ allowed: true, overridden: true })
+  })
+
+  describe('the cap of one team per apply', () => {
+    const BETA = 'module.team["beta"].azurerm_api_management_api.this'
+    const explained = ['module.team["alpha"]', 'module.team["beta"]']
+
+    test('allows every explained destroy of one team, however many resources', () => {
+      const plan = planWith(
+        [DEPLOYMENT, ['delete']],
+        [
+          'module.team["alpha"].module.project.azurerm_cognitive_account_project.this',
+          ['delete']
+        ],
+        [
+          'module.team["alpha"].module.api.azurerm_api_management_api.this',
+          ['delete']
+        ]
+      )
+
+      expect(guardPlan({ plan, state: 'tenants', explained })).toMatchObject({
+        allowed: true,
+        teamsDestroyed: ['alpha'],
+        overCap: false
+      })
+    })
+
+    test('refuses explained destroys that span two teams', () => {
+      const plan = planWith([DEPLOYMENT, ['delete']], [BETA, ['delete']])
+
+      expect(guardPlan({ plan, state: 'tenants', explained })).toEqual({
+        allowed: false,
+        violations: [
+          { address: DEPLOYMENT, actions: ['delete'] },
+          { address: BETA, actions: ['delete'] }
+        ],
+        overridden: false,
+        teamsDestroyed: ['alpha', 'beta'],
+        overCap: true
+      })
+    })
+
+    test('lets an engineer sweep several teams with allow_destroy, reported', () => {
+      const plan = planWith([DEPLOYMENT, ['delete']], [BETA, ['delete']])
+
+      expect(
+        guardPlan({ plan, state: 'tenants', explained, allowDestroy: true })
+      ).toMatchObject({ allowed: true, overridden: true, overCap: true })
+    })
+
+    test('counts a replacement as a destroy of its team', () => {
+      const plan = planWith(
+        [DEPLOYMENT, ['delete', 'create']],
+        [BETA, ['create', 'delete']]
+      )
+
+      expect(
+        guardPlan({ plan, state: 'tenants', explained }).teamsDestroyed
+      ).toEqual(['alpha', 'beta'])
+    })
   })
 })
 

@@ -13,6 +13,7 @@ import { changedFiles, listFilesAt, readFileAt } from './git.js'
 import { checkPin } from './pin-rules.js'
 import { loadValidators, readJson } from './schemas.js'
 import {
+  checkDeletion,
   checkEnvironmentTeams,
   checkTeamFile,
   parseTeamPath
@@ -174,6 +175,7 @@ function validateTenantsChange(input) {
 
   for (const { status, path } of files) {
     if (status === 'D') {
+      problems.push(...checkDeletion(path, readFileAt(repoDir, base, path)))
       continue
     }
 
@@ -186,7 +188,8 @@ function validateTenantsChange(input) {
         params,
         models: context.models,
         validators: context.validators,
-        operationId: author.writer ? input.operationId : undefined
+        operationId: author.writer ? input.operationId : undefined,
+        now: input.now
       })
     )
   }
