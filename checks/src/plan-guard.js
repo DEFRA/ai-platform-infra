@@ -50,10 +50,20 @@ function explainedRemovals(before, after) {
     }
 
     const kept = new Set(current.deployments.map((d) => d.slug))
+    let removedDeployment = false
     for (const deployment of previous.deployments) {
       if (!kept.has(deployment.slug)) {
+        removedDeployment = true
         prefixes.push(`${team}.module.deployment["${deployment.slug}"]`)
       }
+    }
+
+    // The team API's operations follow its models' API profiles, so dropping
+    // the last model of a profile deletes that profile's operations too.
+    if (removedDeployment) {
+      prefixes.push(
+        `${team}.module.api.azurerm_api_management_api_operation.this`
+      )
     }
 
     const federations = new Map(

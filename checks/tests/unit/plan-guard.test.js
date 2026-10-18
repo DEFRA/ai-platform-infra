@@ -85,6 +85,42 @@ describe('guardPlan', () => {
     expect(guardPlan({ plan, state: 'tenants', explained }).allowed).toBe(false)
   })
 
+  test('allows the operations deleted with the last model, but nothing else of the API', () => {
+    const before = new Map([['alpha', alphaTeam()]])
+    const after = new Map([['alpha', alphaTeam({ deployments: [] })]])
+    const operation = (id) =>
+      `module.team["alpha"].module.api.azurerm_api_management_api_operation.this["${id}"]`
+    const api =
+      'module.team["alpha"].module.api.azurerm_api_management_api.this'
+    const explained = explainedRemovals(before, after)
+
+    expect(
+      guardPlan({
+        plan: planWith(
+          [DEPLOYMENT, ['delete']],
+          [operation('chat-deployment'), ['delete']],
+          [operation('chat-v1'), ['delete']]
+        ),
+        state: 'tenants',
+        explained
+      }).allowed
+    ).toBe(true)
+    expect(
+      guardPlan({
+        plan: planWith([api, ['delete']]),
+        state: 'tenants',
+        explained
+      }).allowed
+    ).toBe(false)
+    expect(
+      guardPlan({
+        plan: planWith([operation('chat-v1'), ['delete']]),
+        state: 'tenants',
+        explained: explainedRemovals(before, new Map(before))
+      }).allowed
+    ).toBe(false)
+  })
+
   test('allows an unexplained delete under allow_destroy and reports it', () => {
     const plan = planWith([DEPLOYMENT, ['delete']])
 
@@ -162,13 +198,20 @@ describe('explainedRemovals', () => {
     ])
   })
 
-  test('explains a removed deployment', () => {
+  test('explains a removed deployment and the API operations that follow it', () => {
     const before = new Map([['alpha', alphaTeam()]])
     const after = new Map([['alpha', alphaTeam({ deployments: [] })]])
 
     expect(explainedRemovals(before, after)).toEqual([
-      'module.team["alpha"].module.deployment["gpt-5-nano"]'
+      'module.team["alpha"].module.deployment["gpt-5-nano"]',
+      'module.team["alpha"].module.api.azurerm_api_management_api_operation.this'
     ])
+  })
+
+  test('explains no API operations while every deployment is kept', () => {
+    const before = new Map([['alpha', alphaTeam()]])
+
+    expect(explainedRemovals(before, new Map(before))).toEqual([])
   })
 
   test('explains a federation that points at a new CDP service', () => {
