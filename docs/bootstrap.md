@@ -82,3 +82,14 @@ Set the GitHub variables in both state repositories: `AZURE_TENANT_ID` and `GITO
 as repository variables, `AZURE_CLIENT_ID` and `AZURE_SUBSCRIPTION_ID` on the `{env}` Environment. Merge
 the environment's registry entry and parameters in `ai-platform-environments`. The next infra release
 pins and applies the platform.
+
+## Lock the core resources
+
+Only Owner or User Access Administrator may write a management lock, which the deploy identity is not, so
+the bootstrap holds them. The state account is locked from the first apply. Once the first platform apply
+has created the vaults and the workspace, apply the bootstrap again with `-var lock_platform_resources=true`:
+`CanNotDelete` on both Key Vaults and the Log Analytics workspace, which their role assignments and
+diagnostic settings inherit. API Management and the Foundry accounts take no lock, because every team API,
+project and deployment under them would inherit it and the tenants apply removes those by design;
+`prevent_destroy` and `plan-guard` cover them. To remove a locked resource deliberately, remove its lock
+here first (`-var lock_platform_resources=false`), then dispatch the apply with `allow_destroy`.

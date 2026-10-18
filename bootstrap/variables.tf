@@ -44,3 +44,9 @@ variable "operator_state_access" {
   type        = bool
   default     = true
 }
+
+variable "lock_platform_resources" {
+  description = "Second pass, after the first platform apply: CanNotDelete locks on both Key Vaults and the Log Analytics workspace. False until they exist."
+  type        = bool
+  default     = false
+}

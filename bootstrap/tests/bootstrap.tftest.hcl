@@ -94,3 +94,55 @@ run "refuses_a_prefix_for_the_other_repository" {
 
   expect_failures = [var.oidc_subject_prefixes]
 }
+
+run "locks_the_state_account_from_the_first_pass_and_nothing_else" {
+  command = plan
+
+  assert {
+    condition     = azurerm_management_lock.state_account.lock_level == "CanNotDelete" && azurerm_management_lock.state_account.name == "aip-no-delete"
+    error_message = "the state account is locked against deletion as soon as it exists"
+  }
+
+  assert {
+    condition     = length(azurerm_management_lock.platform) == 0
+    error_message = "the platform's resources are locked on a second pass only, once they exist"
+  }
+}
+
+run "locks_the_vaults_and_workspace_on_the_second_pass" {
+  command = plan
+
+  variables {
+    lock_platform_resources = true
+  }
+
+  override_data {
+    target = data.azurerm_key_vault.platform["key_vault_platform"]
+    values = { id = "/subscriptions/0/resourceGroups/SNDAIPINFRGP1401/providers/Microsoft.KeyVault/vaults/sndaipappkvt1401" }
+  }
+
+  override_data {
+    target = data.azurerm_key_vault.platform["key_vault_tenants"]
+    values = { id = "/subscriptions/0/resourceGroups/SNDAIPINFRGP1401/providers/Microsoft.KeyVault/vaults/sndaipappkvt1402" }
+  }
+
+  override_data {
+    target = data.azurerm_log_analytics_workspace.platform[0]
+    values = { id = "/subscriptions/0/resourceGroups/SNDAIPINFRGP1401/providers/Microsoft.OperationalInsights/workspaces/SNDAIPAPPLW1401" }
+  }
+
+  assert {
+    condition     = toset(keys(azurerm_management_lock.platform)) == toset(["key_vault_platform", "key_vault_tenants", "log_analytics_workspace"])
+    error_message = "both vaults and the workspace are locked; API Management and the Foundry accounts are not, so team children stay removable"
+  }
+
+  assert {
+    condition     = alltrue([for lock in azurerm_management_lock.platform : lock.lock_level == "CanNotDelete"])
+    error_message = "the locks refuse deletion only, never changes"
+  }
+
+  assert {
+    condition     = data.azurerm_key_vault.platform["key_vault_tenants"].name == "sndaipappkvt1402" && data.azurerm_log_analytics_workspace.platform[0].name == "SNDAIPAPPLW1401"
+    error_message = "the locked resources are looked up by their CCoE names"
+  }
+}

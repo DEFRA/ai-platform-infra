@@ -103,6 +103,52 @@ resource "azurerm_storage_container" "state" {
   }
 }
 
+# Delete locks (direction 18 October 2026). Only Owner or User Access
+# Administrator may write a lock, which the deploy identity is not, so the
+# operator holds them here. The state account is locked as soon as it exists;
+# the platform's vaults and workspace on a second pass, once the first
+# platform apply has created them (lock_platform_resources). API Management
+# and the Foundry accounts take no lock: every resource under a locked scope
+# inherits it, so a lock there would refuse the team APIs, projects and
+# deployments the tenants apply removes by design; prevent_destroy and
+# plan-guard cover them (docs/bootstrap.md).
+resource "azurerm_management_lock" "state_account" {
+  name       = "aip-no-delete"
+  scope      = azurerm_storage_account.state.id
+  lock_level = "CanNotDelete"
+  notes      = "Terraform state of the AI Platform; removed only to decommission the environment."
+}
+
+data "azurerm_key_vault" "platform" {
+  for_each = var.lock_platform_resources ? toset(["key_vault_platform", "key_vault_tenants"]) : toset([])
+
+  name                = local.names[each.key]
+  resource_group_name = local.names.resource_group_platform
+}
+
+data "azurerm_log_analytics_workspace" "platform" {
+  count = var.lock_platform_resources ? 1 : 0
+
+  name                = local.names.log_analytics_workspace
+  resource_group_name = local.names.resource_group_platform
+}
+
+locals {
+  locked_platform_resources = merge(
+    { for key, vault in data.azurerm_key_vault.platform : key => vault.id },
+    { for workspace in data.azurerm_log_analytics_workspace.platform : "log_analytics_workspace" => workspace.id },
+  )
+}
+
+resource "azurerm_management_lock" "platform" {
+  for_each = local.locked_platform_resources
+
+  name       = "aip-no-delete"
+  scope      = each.value
+  lock_level = "CanNotDelete"
+  notes      = "Core AI Platform resource; its role assignments and diagnostics inherit the lock. Removed only by a platform engineer, deliberately."
+}
+
 resource "azurerm_role_assignment" "deploy_state" {
   scope              = azurerm_storage_container.state.id
   role_definition_id = local.roles.storage_blob_data_contributor
