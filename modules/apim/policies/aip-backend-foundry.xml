@@ -1,0 +1,24 @@
+<fragment>
+  <!--
+    aip-backend-foundry: the last steps for a model hosted on Microsoft Foundry (Azure
+    OpenAI). The caller's credentials never reach the backend; the gateway's identity
+    authenticates; the catalogue slug becomes the team's deployment name in the path or
+    the body. A model on another hosting platform includes its own fragment instead.
+  -->
+  <set-header name="Authorization" exists-action="delete" />
+  <set-header name="api-key" exists-action="delete" />
+  <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
+  <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+  <choose>
+    <when condition="@(context.Request.MatchedParameters.ContainsKey("deployment-id"))">
+      <rewrite-uri template="@("/openai/deployments/" + (string)context.Variables["aipDeployment"] + "/chat/completions")" copy-unmatched-params="true" />
+    </when>
+    <otherwise>
+      <set-body>@{
+        var body = context.Request.Body.As<JObject>(preserveContent: true);
+        body["model"] = (string)context.Variables["aipDeployment"];
+        return body.ToString();
+      }</set-body>
+    </otherwise>
+  </choose>
+</fragment>

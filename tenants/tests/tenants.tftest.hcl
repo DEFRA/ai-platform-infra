@@ -24,8 +24,15 @@ override_data {
       location                       = "uksouth"
       resource_group_name            = "SNDAIPINFRGP1401"
       portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002"
-      authorise_fragment             = "aip-authorise"
-      foundry_regions                = ["uksouth", "swedencentral"]
+      apim_fragments = {
+        whoami        = "aip-whoami"
+        request_model = "aip-request-model"
+        backend       = { foundry = "aip-backend-foundry" }
+      }
+      apim_backends = {
+        foundry = { uksouth = "aip-foundry-uksouth", swedencentral = "aip-foundry-swedencentral" }
+      }
+      foundry_regions = ["uksouth", "swedencentral"]
       naming = {
         sub_type             = "SND"
         service_code         = "AIP"
@@ -137,6 +144,11 @@ run "applies_a_team_with_client_secrets_and_a_federated_team" {
   }
 
   assert {
+    condition     = output.teams.alpha.deployments["gpt-5-nano"].hosting == "foundry" && output.teams.alpha.deployments["gpt-5-nano"].backend == "aip-foundry-swedencentral"
+    error_message = "a model takes its offering's hosting from the catalogue and routes to the platform's backend for that region"
+  }
+
+  assert {
     condition     = output.teams.alpha.project.name == "aip-alpha"
     error_message = "the project takes the derived name"
   }
@@ -182,6 +194,44 @@ run "refuses_a_global_sku" {
   }
 
   expect_failures = [var.teams]
+}
+
+run "refuses_a_foundry_deployment_without_capacity" {
+  command = plan
+
+  variables {
+    teams = {
+      alpha = merge(var.teams.alpha, {
+        deployments = [{ slug = "gpt-5-nano", sku = "DataZoneStandard", status = "active" }]
+      })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "removing_a_deployment_removes_only_that_deployment" {
+  command = plan
+
+  variables {
+    teams = {
+      alpha = var.teams.alpha
+      beta = merge(var.teams.beta, {
+        deployments = []
+        gateway     = merge(var.teams.beta.gateway, { allowedDeployments = [] })
+      })
+    }
+  }
+
+  assert {
+    condition     = length(output.teams.beta.deployments) == 0 && length(output.teams.alpha.deployments) == 1
+    error_message = "a team file without the deployment plans no deployment for it and leaves other teams alone"
+  }
+
+  assert {
+    condition     = output.teams.beta.project.name == "aip-beta" && output.teams.beta.api.name == "beta"
+    error_message = "the team's project and API stay while it has no deployments"
+  }
 }
 
 run "refuses_a_grant_that_is_not_a_team_deployment" {

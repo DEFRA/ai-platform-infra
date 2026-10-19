@@ -15,9 +15,26 @@ data "terraform_remote_state" "platform" {
 locals {
   platform = data.terraform_remote_state.platform.outputs
 
-  catalogue = {
+  # A model names its provider and offering; the offering says where the model
+  # runs (catalogue/README.md). Each model carries its offering's hosting so
+  # the team module deploys it on the right platform.
+  providers = {
+    for file in fileset("${path.module}/../catalogue/providers", "*.json") :
+    trimsuffix(file, ".json") => jsondecode(file("${path.module}/../catalogue/providers/${file}"))
+  }
+  offerings = merge([
+    for provider in local.providers : {
+      for offering in provider.offerings : "${provider.id}/${offering.id}" => offering
+    }
+  ]...)
+  models = {
     for file in fileset("${path.module}/../catalogue/models", "*.json") :
     trimsuffix(file, ".json") => jsondecode(file("${path.module}/../catalogue/models/${file}"))
+  }
+  catalogue = {
+    for slug, model in local.models : slug => merge(model, {
+      hosting = local.offerings["${model.provider}/${model.offering}"].hosting
+    })
   }
 
   tags = {
@@ -70,8 +87,9 @@ module "team" {
       resource_group_name = local.platform.resource_group_name
       gateway_url         = local.platform.api_management.gateway_url
     }
-    foundry_accounts   = local.platform.foundry_accounts
-    authorise_fragment = local.platform.authorise_fragment
+    foundry_accounts = local.platform.foundry_accounts
+    fragments        = local.platform.apim_fragments
+    backends         = local.platform.apim_backends
   }
 
   owner_object_ids = [

@@ -1,0 +1,20 @@
+<fragment>
+  <!--
+    aip-key-guard: the key tier (Research). API Management has already matched the
+    subscription of an API that requires one; this refuses a subscription past the end
+    date the Portal API sets at issue and renewal (design C #model-access), and any call
+    that somehow carries none. The subscription is the caller for the steps that follow.
+  -->
+  <choose>
+    <when condition="@(context.Subscription == null || (context.Subscription.EndDate != null && context.Subscription.EndDate <= context.Timestamp))">
+      <return-response>
+        <set-status code="401" reason="Unauthorized" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-body>{"code":"subscription-expired"}</set-body>
+      </return-response>
+    </when>
+  </choose>
+  <set-variable name="aipClientId" value="@(context.Subscription.Id)" />
+</fragment>

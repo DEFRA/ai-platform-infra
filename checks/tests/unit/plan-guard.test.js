@@ -34,7 +34,9 @@ describe('guardPlan', () => {
     expect(guardPlan({ plan, state: 'tenants' })).toEqual({
       allowed: true,
       violations: [],
-      overridden: false
+      overridden: false,
+      teamsDestroyed: [],
+      overCap: false
     })
   })
 
@@ -52,7 +54,9 @@ describe('guardPlan', () => {
           actions: ['delete']
         }
       ],
-      overridden: false
+      overridden: false,
+      teamsDestroyed: [],
+      overCap: false
     })
   })
 
@@ -81,12 +85,107 @@ describe('guardPlan', () => {
     expect(guardPlan({ plan, state: 'tenants', explained }).allowed).toBe(false)
   })
 
+  test('allows the operations deleted with the last model, but nothing else of the API', () => {
+    const before = new Map([['alpha', alphaTeam()]])
+    const after = new Map([['alpha', alphaTeam({ deployments: [] })]])
+    const operation = (id) =>
+      `module.team["alpha"].module.api.azurerm_api_management_api_operation.this["${id}"]`
+    const api =
+      'module.team["alpha"].module.api.azurerm_api_management_api.this'
+    const explained = explainedRemovals(before, after)
+
+    expect(
+      guardPlan({
+        plan: planWith(
+          [DEPLOYMENT, ['delete']],
+          [operation('chat-deployment'), ['delete']],
+          [operation('chat-v1'), ['delete']]
+        ),
+        state: 'tenants',
+        explained
+      }).allowed
+    ).toBe(true)
+    expect(
+      guardPlan({
+        plan: planWith([api, ['delete']]),
+        state: 'tenants',
+        explained
+      }).allowed
+    ).toBe(false)
+    expect(
+      guardPlan({
+        plan: planWith([operation('chat-v1'), ['delete']]),
+        state: 'tenants',
+        explained: explainedRemovals(before, new Map(before))
+      }).allowed
+    ).toBe(false)
+  })
+
   test('allows an unexplained delete under allow_destroy and reports it', () => {
     const plan = planWith([DEPLOYMENT, ['delete']])
 
     expect(
       guardPlan({ plan, state: 'tenants', allowDestroy: true })
     ).toMatchObject({ allowed: true, overridden: true })
+  })
+
+  describe('the cap of one team per apply', () => {
+    const BETA = 'module.team["beta"].azurerm_api_management_api.this'
+    const explained = ['module.team["alpha"]', 'module.team["beta"]']
+
+    test('allows every explained destroy of one team, however many resources', () => {
+      const plan = planWith(
+        [DEPLOYMENT, ['delete']],
+        [
+          'module.team["alpha"].module.project.azurerm_cognitive_account_project.this',
+          ['delete']
+        ],
+        [
+          'module.team["alpha"].module.api.azurerm_api_management_api.this',
+          ['delete']
+        ]
+      )
+
+      expect(guardPlan({ plan, state: 'tenants', explained })).toMatchObject({
+        allowed: true,
+        teamsDestroyed: ['alpha'],
+        overCap: false
+      })
+    })
+
+    test('refuses explained destroys that span two teams', () => {
+      const plan = planWith([DEPLOYMENT, ['delete']], [BETA, ['delete']])
+
+      expect(guardPlan({ plan, state: 'tenants', explained })).toEqual({
+        allowed: false,
+        violations: [
+          { address: DEPLOYMENT, actions: ['delete'] },
+          { address: BETA, actions: ['delete'] }
+        ],
+        overridden: false,
+        teamsDestroyed: ['alpha', 'beta'],
+        overCap: true
+      })
+    })
+
+    test('lets an engineer sweep several teams with allow_destroy, reported', () => {
+      const plan = planWith([DEPLOYMENT, ['delete']], [BETA, ['delete']])
+
+      expect(
+        guardPlan({ plan, state: 'tenants', explained, allowDestroy: true })
+      ).toMatchObject({ allowed: true, overridden: true, overCap: true })
+    })
+
+    test('counts a replacement as a destroy of its team', () => {
+      const plan = planWith(
+        [DEPLOYMENT, ['delete', 'create']],
+        [BETA, ['create', 'delete']]
+      )
+
+      expect(
+        guardPlan({ plan, state: 'tenants', explained }).teamsDestroyed
+      ).toEqual(['alpha', 'beta'])
+    })
   })
 })
 
@@ -99,13 +198,20 @@ describe('explainedRemovals', () => {
     ])
   })
 
-  test('explains a removed deployment', () => {
+  test('explains a removed deployment and the API operations that follow it', () => {
     const before = new Map([['alpha', alphaTeam()]])
     const after = new Map([['alpha', alphaTeam({ deployments: [] })]])
 
     expect(explainedRemovals(before, after)).toEqual([
-      'module.team["alpha"].module.deployment["gpt-5-nano"]'
+      'module.team["alpha"].module.deployment["gpt-5-nano"]',
+      'module.team["alpha"].module.api.azurerm_api_management_api_operation.this'
     ])
+  })
+
+  test('explains no API operations while every deployment is kept', () => {
+    const before = new Map([['alpha', alphaTeam()]])
+
+    expect(explainedRemovals(before, new Map(before))).toEqual([])
   })
 
   test('explains a federation that points at a new CDP service', () => {

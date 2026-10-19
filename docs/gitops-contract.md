@@ -50,12 +50,24 @@ Rules beyond the schema, enforced by `validate`:
 - `revision` increases on every write; `operationId` equals the `op/{operationId}` branch.
 - Each deployment's catalogue model has tier `team`, lists the environment, is `available` or
   `eligible` (a `deprecated` model keeps existing grants only) and offers the SKU for the `team` tier
-  in a region the environment's Foundry accounts cover. Capacity is within the environment's
+  in a region the environment's Foundry accounts cover. The SKU and `capacity` words belong to the
+  model's hosting platform, which the catalogue offering names: a Foundry deployment needs
+  `capacity` and a platform that does not size by capacity takes none, so the file keeps one shape
+  whatever hosts the model (18 October 2026). Capacity is within the environment's
   `capacityPolicy`, and the sum across every team per model is within its `quota`. Each region's
   Foundry account holds at most 32 model deployments across every team, the Azure limit per
   resource.
 - `allowedDeployments` holds only the team's own deployments in Phase 1 (shared Research grants
   follow); `tokensPerMinute` does not exceed the team's capacity.
+- Removal (design C #deletion): a team admin removes a model by submitting the file without it; the
+  next apply destroys that deployment alone. A team leaves through `pending-removal`, whose
+  `removeAfter` is at least the environment's cooling-off away (the registry entry's
+  `removal.coolingOffDays`, else by class: 0 for `platform-test` and `sandbox`, 2 for `consumer-lower`,
+  14 for `consumer-production` and `shared-service`), then `removed` once that date has passed (an
+  environment with a cooling-off of zero, Infradev, may remove an active team in one step); a
+  `removed` team keeps no deployments and no `oauth`, and only a `removed` team's file may be
+  deleted, so the apply after the deletion has nothing of the team's to destroy. A team may return to
+  `active` from either state.
 - OAuth only: the team tier's `gateway.credentialType` is `oauth`, and every team that is not
   `removed` has an `oauth` block, using federated credentials, client secrets where
   `secretsAllowed`, or both, including for local development. Subscription keys belong to the Research
@@ -67,8 +79,8 @@ Rules beyond the schema, enforced by `validate`:
   derives the issuer, the subject `arn:aws:iam::{account}:role/{service}` and the audience from the
   environment's registry entry, so a team file holds nothing environment-specific for CDP. Azure
   federations use the Defra tenant issuer and a principal ID; at most 20 federations and 40 clients;
-  one team per CDP service per environment; secrets in a `consumer-production` environment need an
-  exception that never names a CDP service.
+  no two federations of a team trust one workload; one team per CDP service per environment;
+  secrets in a `consumer-production` environment need an exception that never names a CDP service.
 - Entra objects: the environment's deploy identity creates the platform's API audience registration
   and service principal, and the same pair for each team. Entra counts every object it creates,
   soft-deleted ones included, so the teams of an environment stay within the registry entry's
@@ -130,21 +142,22 @@ Retries and reconciles are fresh dispatches, never re-runs.
 
 ## Apply
 
-| Step             | Platform (`ai-platform-deployments`)                                                                                                                   | Tenants (`ai-platform-tenants`)                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| Trigger          | Push to `main`; dispatch from `ai-platform-environments`                                                                                               | Push to `main`; dispatch from the platform apply                                                                         |
-| What it applies  | A push: each environment whose folder changed since its last successful apply, so a superseded run loses nothing; a dispatch: the environment it names | Same                                                                                                                     |
-| Superseded guard | Stops a run whose commit is not the head of `main` (R1)                                                                                                | Same                                                                                                                     |
-| Platform first   | –                                                                                                                                                      | Runs only if the pin's platform apply succeeded (R5)                                                                     |
-| Re-validation    | The pin on `main` (R4)                                                                                                                                 | Every team file on `main` (R4)                                                                                           |
-| Plan and apply   | Saved plan, `plan-guard` (no deletes, R2), apply the plan                                                                                              | Saved plan, `plan-guard` (only explained deletes, R2)                                                                    |
-| Identity         | `id-aip-deploy-{env}` by OIDC in Environment `{env}`                                                                                                   | Same                                                                                                                     |
-| Concurrency      | `platform-{env}`, never cancelled                                                                                                                      | `tenants-{env}`, never cancelled                                                                                         |
-| Record           | GitHub Deployment for `{env}` at the applied SHA                                                                                                       | Same                                                                                                                     |
-| Run report       | Artifact `run-report-{env}.json`, unzipped (R12)                                                                                                       | Same, with failing teams (R3)                                                                                            |
-| Then             | Dispatches the tenants apply at the same release                                                                                                       | Permanently deletes the Entra registrations the apply removed, so they stop counting towards the deploy identity's limit |
+| Step             | Platform (`ai-platform-deployments`)                                                                                                                   | Tenants (`ai-platform-tenants`)                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trigger          | Push to `main`; dispatch from `ai-platform-environments`                                                                                               | Push to `main`; dispatch from the platform apply                                                                                                  |
+| What it applies  | A push: each environment whose folder changed since its last successful apply, so a superseded run loses nothing; a dispatch: the environment it names | Same                                                                                                                                              |
+| Superseded guard | Stops a run whose commit is not the head of `main` (R1)                                                                                                | Same                                                                                                                                              |
+| Platform first   | –                                                                                                                                                      | Runs only if the pin's platform apply succeeded (R5)                                                                                              |
+| Re-validation    | The pin on `main` (R4)                                                                                                                                 | Every team file on `main` (R4)                                                                                                                    |
+| Plan and apply   | Saved plan, `plan-guard` (no deletes, R2), apply the plan                                                                                              | Saved plan, `plan-guard` (only deletes a removed team, model, its API operations or federation explains, spanning at most one team per apply, R2) |
+| Identity         | `id-aip-deploy-{env}` by OIDC in Environment `{env}`                                                                                                   | Same                                                                                                                                              |
+| Concurrency      | `platform-{env}`, never cancelled                                                                                                                      | `tenants-{env}`, never cancelled                                                                                                                  |
+| Record           | GitHub Deployment for `{env}` at the applied SHA                                                                                                       | Same                                                                                                                                              |
+| Run report       | Artifact `run-report-{env}.json`, unzipped (R12)                                                                                                       | Same, with failing teams (R3)                                                                                                                     |
+| Then             | Dispatches the tenants apply at the same release                                                                                                       | Permanently deletes the Entra registrations the apply removed, so they stop counting towards the deploy identity's limit                          |
 
-Break-glass inputs, for engineers only: `allow_destroy` (R2 override, reported) and `force_unlock`
+Break-glass inputs, for engineers only: `allow_destroy` (R2 override, reported; also what lets one
+apply remove more than one team, so a mistaken sweep never runs unattended) and `force_unlock`
 (a state lease ID, R6).
 
 The run report ([`run-report.js`](../checks/src/run-report.js)) records the applied and previous SHAs,

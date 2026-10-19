@@ -146,9 +146,34 @@ describe('validateTenantsChange', () => {
     ).toEqual(['gpt-5-nano capacity 12 exceeds the infradev quota 10'])
   })
 
-  test('accepts the removal of a team file', () => {
+  test('refuses the deletion of a team file that is not removed', () => {
     const before = submitTeam(betaTeam())
     repository.remove(teamPath(betaTeam()))
+    const head = repository.commit('chore: remove beta')
+
+    expect(
+      messages(
+        validateTenantsChange({
+          repoDir: repository.dir,
+          base: before,
+          head,
+          context,
+          author: WRITER
+        })
+      )
+    ).toEqual(['a active team file is deleted only once it is removed'])
+  })
+
+  test('accepts the deletion of a removed team file', () => {
+    const removed = betaTeam({
+      revision: 3,
+      status: 'removed',
+      deployments: [],
+      gateway: { ...betaTeam().gateway, allowedDeployments: [] }
+    })
+    delete removed.oauth
+    const before = submitTeam(removed)
+    repository.remove(teamPath(removed))
     const head = repository.commit('chore: remove beta')
 
     expect(
@@ -160,6 +185,31 @@ describe('validateTenantsChange', () => {
         author: WRITER
       }).problems
     ).toEqual([])
+  })
+
+  test('refuses the deletion of a team still cooling off', () => {
+    const pending = betaTeam({
+      revision: 2,
+      status: 'pending-removal',
+      removeAfter: '2099-01-01'
+    })
+    const before = submitTeam(pending)
+    repository.remove(teamPath(pending))
+    const head = repository.commit('chore: remove beta')
+
+    expect(
+      messages(
+        validateTenantsChange({
+          repoDir: repository.dir,
+          base: before,
+          head,
+          context,
+          author: WRITER
+        })
+      )
+    ).toEqual([
+      'a pending-removal team file is deleted only once it is removed'
+    ])
   })
 })
 

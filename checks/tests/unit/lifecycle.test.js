@@ -108,7 +108,10 @@ describe('a team file through its life, as the Portal API submits it', () => {
       head,
       environment: 'infradev'
     })
-    expect(explained).toEqual([`${TEAM}.module.deployment["gpt-4-1-nano"]`])
+    expect(explained).toEqual([
+      `${TEAM}.module.deployment["gpt-4-1-nano"]`,
+      `${TEAM}.module.api.azurerm_api_management_api_operation.this`
+    ])
 
     function planDeleting(address) {
       return {
@@ -120,6 +123,15 @@ describe('a team file through its life, as the Portal API submits it', () => {
       guardPlan({
         plan: planDeleting(
           `${TEAM}.module.deployment["gpt-4-1-nano"].azurerm_cognitive_deployment.this`
+        ),
+        state: 'tenants',
+        explained
+      }).allowed
+    ).toBe(true)
+    expect(
+      guardPlan({
+        plan: planDeleting(
+          `${TEAM}.module.api.azurerm_api_management_api_operation.this["chat-v1"]`
         ),
         state: 'tenants',
         explained

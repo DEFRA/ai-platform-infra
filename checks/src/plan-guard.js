@@ -2,6 +2,9 @@ import { listFilesAt, readFileAt } from './git.js'
 import { federationKey, parseTeamPath } from './team-rules.js'
 
 const TEAM_ADDRESS = /^module\.team\["([^"]+)"\]/
+// Explained destroys in one tenants apply may span this many teams; more
+// waits for an engineer's allow_destroy (direction 18 October 2026).
+const MAX_TEAMS_DESTROYED_PER_APPLY = 1
 
 function isDestructive(actions) {
   return actions.includes('delete')
@@ -47,10 +50,20 @@ function explainedRemovals(before, after) {
     }
 
     const kept = new Set(current.deployments.map((d) => d.slug))
+    let removedDeployment = false
     for (const deployment of previous.deployments) {
       if (!kept.has(deployment.slug)) {
+        removedDeployment = true
         prefixes.push(`${team}.module.deployment["${deployment.slug}"]`)
       }
+    }
+
+    // The team API's operations follow its models' API profiles, so dropping
+    // the last model of a profile deletes that profile's operations too.
+    if (removedDeployment) {
+      prefixes.push(
+        `${team}.module.api.azurerm_api_management_api_operation.this`
+      )
     }
 
     const federations = new Map(
@@ -83,6 +96,9 @@ function covers(prefix, address) {
 /**
  * Refuses a saved plan that deletes or replaces anything the merged diff
  * does not explain (R2). In the platform state every delete is refused.
+ * Explained destroys are capped at one team per apply (direction 18 October
+ * 2026): a merge that would remove more teams than one at once waits for an
+ * engineer's allow_destroy, so a mistaken sweep never runs unattended.
  * An engineer's allow_destroy dispatch overrides, and is reported.
  *
  * @param {object} input - The plan and what explains its deletes.
@@ -91,14 +107,26 @@ function covers(prefix, address) {
  * @param {string[]} [input.explained] - Allowed address prefixes.
  * @param {boolean} [input.allowDestroy] - Engineer override.
  * @returns {{allowed: boolean, violations: Array<{address: string,
- *   actions: string[]}>, overridden: boolean}} Decision.
+ *   actions: string[]}>, overridden: boolean, teamsDestroyed: string[]}}
+ *   Decision.
  */
 function guardPlan({ plan, state, explained = [], allowDestroy = false }) {
-  const violations = (plan.resource_changes ?? [])
-    .filter((change) => isDestructive(change.change.actions))
+  const destructive = (plan.resource_changes ?? []).filter((change) =>
+    isDestructive(change.change.actions)
+  )
+  const teamsDestroyed = [
+    ...new Set(
+      destructive
+        .map((change) => TEAM_ADDRESS.exec(change.address)?.[1])
+        .filter(Boolean)
+    )
+  ].sort()
+  const overCap = teamsDestroyed.length > MAX_TEAMS_DESTROYED_PER_APPLY
+  const violations = destructive
     .filter(
       (change) =>
         state === 'platform' ||
+        overCap ||
         !explained.some((prefix) => covers(prefix, change.address))
     )
     .map((change) => ({
@@ -109,7 +137,9 @@ function guardPlan({ plan, state, explained = [], allowDestroy = false }) {
   return {
     allowed: violations.length === 0 || allowDestroy,
     violations,
-    overridden: violations.length > 0 && allowDestroy
+    overridden: violations.length > 0 && allowDestroy,
+    teamsDestroyed,
+    overCap
   }
 }
 
@@ -131,4 +161,11 @@ function tenantsRemovals({ repoDir, base, head, environment }) {
   )
 }
 
-export { explainedRemovals, guardPlan, teamsAt, tenantsRemovals, TEAM_ADDRESS }
+export {
+  explainedRemovals,
+  guardPlan,
+  MAX_TEAMS_DESTROYED_PER_APPLY,
+  teamsAt,
+  tenantsRemovals,
+  TEAM_ADDRESS
+}

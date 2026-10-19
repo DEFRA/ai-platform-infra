@@ -73,7 +73,10 @@ holds a real client ID.
      -backend-config=container_name=tfstate -backend-config=key=bootstrap.tfstate
    ```
 
-3. Apply once more with `-var operator_state_access=false`, so no person keeps standing access to state.
+3. Revoke the operator's standing access to state in two applies, because the role assignment sits under
+   the locked account and Azure refuses to delete a role assignment under a lock: first
+   `-var operator_state_access=false -var lock_state_account=false`, which removes the lock and then the
+   assignment, then `-var operator_state_access=false` alone, which relocks the account.
 4. Do not commit the uncommented `backend.tf` until the bootstrap of every environment uses the backend.
 
 ## Then
@@ -82,3 +85,16 @@ Set the GitHub variables in both state repositories: `AZURE_TENANT_ID` and `GITO
 as repository variables, `AZURE_CLIENT_ID` and `AZURE_SUBSCRIPTION_ID` on the `{env}` Environment. Merge
 the environment's registry entry and parameters in `ai-platform-environments`. The next infra release
 pins and applies the platform.
+
+## Lock the core resources
+
+Only Owner or User Access Administrator may write a management lock, which the deploy identity is not, so
+the bootstrap holds them. The state account is locked from the first apply (`lock_state_account`); the role
+assignments on its container inherit the lock, so changing one, including revoking the operator's access,
+means lifting the lock for that apply and relocking on the next. Once the first platform apply
+has created the vaults and the workspace, apply the bootstrap again with `-var lock_platform_resources=true`:
+`CanNotDelete` on both Key Vaults and the Log Analytics workspace, which their role assignments and
+diagnostic settings inherit. API Management and the Foundry accounts take no lock, because every team API,
+project and deployment under them would inherit it and the tenants apply removes those by design;
+`prevent_destroy` and `plan-guard` cover them. To remove a locked resource deliberately, remove its lock
+here first (`-var lock_platform_resources=false`), then dispatch the apply with `allow_destroy`.

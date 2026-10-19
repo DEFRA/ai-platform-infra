@@ -105,6 +105,21 @@ run "plans_the_public_minimal_platform" {
     condition     = output.naming.service_code == "AIP"
     error_message = "the tenants root's naming codes include the service code"
   }
+
+  assert {
+    condition     = toset(keys(azurerm_api_management_backend.foundry)) == toset(["uksouth", "swedencentral"]) && azurerm_api_management_backend.foundry["uksouth"].name == "aip-foundry-uksouth"
+    error_message = "one named backend per Foundry account, for team APIs to route to by ID"
+  }
+
+  assert {
+    condition     = azurerm_api_management_backend.foundry["uksouth"].url == "https://aif-aip-infradev.openai.azure.com" && azurerm_api_management_backend.foundry["uksouth"].tls[0].validate_certificate_name
+    error_message = "a backend points at its account's OpenAI endpoint and validates its certificate"
+  }
+
+  assert {
+    condition     = output.apim_backends.foundry.swedencentral == "aip-foundry-swedencentral" && output.apim_fragments.backend.foundry == "aip-backend-foundry"
+    error_message = "the tenants root reads the backends and the backend fragment per hosting platform"
+  }
 }
 
 run "deploys_into_an_existing_resource_group" {

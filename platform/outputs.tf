@@ -53,8 +53,16 @@ output "api_audience" {
   } : null
 }
 
-output "authorise_fragment" {
-  value = module.apim.authorise_fragment
+output "apim_fragments" {
+  description = "The shared fragments a team API includes, and the backend fragment per hosting platform."
+  value       = module.apim.fragments
+}
+
+output "apim_backends" {
+  description = "Named backends by hosting platform and region; a team API selects one by ID."
+  value = {
+    foundry = { for region, backend in azurerm_api_management_backend.foundry : region => backend.name }
+  }
 }
 
 output "naming" {

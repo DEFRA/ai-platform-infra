@@ -77,13 +77,16 @@ resource "azurerm_api_management_api_policy" "this" {
   api_management_name = var.api_management.name
   resource_group_name = var.api_management.resource_group_name
 
+  # The team's own facts, then <base /> for the global guard, then the shared
+  # steps; only the model routing and the limits are generated per team.
   xml_content = templatefile("${path.module}/policies/team-api.xml", {
     team                = var.team_slug
     clients_named_value = var.named_values.clients
     access_named_value  = var.named_values.access_window
-    authorise_fragment  = var.authorise_fragment
+    fragments           = var.fragments
     models              = var.models
-    granted             = join(",", [for model in var.models : "\"${model.slug}\""])
+    hostings            = sort(distinct([for model in var.models : model.hosting]))
+    granted             = join(",", [for model in var.models : model.slug])
     tokens_per_minute   = var.limits.tokens_per_minute
     requests_per_minute = var.limits.requests_per_minute
   })

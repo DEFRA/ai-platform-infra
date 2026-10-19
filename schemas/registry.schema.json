@@ -113,6 +113,15 @@
           }
         },
         "resetNightly": { "type": "boolean" },
+        "removal": {
+          "description": "The team removal lifecycle in this environment (design C #deletion): a team enters pending-removal with removeAfter at least coolingOffDays away and is removed once that date has passed; zero lets an active team be removed in one step. Absent, the class decides: 0 for platform-test and sandbox, 2 for consumer-lower, 14 for consumer-production and shared-service.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["coolingOffDays"],
+          "properties": {
+            "coolingOffDays": { "type": "integer", "minimum": 0, "maximum": 60 }
+          }
+        },
         "runner": {
           "description": "Where apply jobs run: standard GitHub-hosted labels, or the environment's larger-runner group with Azure private networking.",
           "type": "object",

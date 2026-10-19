@@ -1,10 +1,10 @@
 <fragment>
   <!--
-    aip-authorise: design E request checks 1 to 3, shared by every OAuth team API.
-    The including team policy sets aipClients (comma-separated client IDs) and
-    aipAccess (access windows) from its own named values first. Named values hold
-    fixed formats only (GUIDs, ISO 8601 UTC times, status words), because they are
-    substituted into the expressions below.
+    aip-authorise: design E request checks 1 to 3, included by the global policy for every
+    OAuth API. The API's own policy sets aipClients (comma-separated client IDs) and
+    aipAccess (access windows) from its named values before <base />; an API that set
+    neither grants no client. Named values hold fixed formats only (GUIDs, ISO 8601 UTC
+    times, status words), because they are substituted into the expressions below.
     Access window entries: clientId|status|validFrom|expiresAt, separated by ";",
     where status is active or suspended and expiresAt may be untilRevoked. Times
     are parsed as DateTimeOffset because APIM does not allow converting a DateTime to UTC.
@@ -27,7 +27,7 @@
   <choose>
     <when condition="@{
       var client = (string)context.Variables["aipClientId"];
-      var clients = ((string)context.Variables["aipClients"]).Split(',');
+      var clients = context.Variables.GetValueOrDefault<string>("aipClients", "").Split(',');
       var denied = "{{${deny_list_named_value}}}".Split(',');
       return string.IsNullOrEmpty(client) || !clients.Contains(client) || denied.Contains(client);
     }">
@@ -43,7 +43,7 @@
   <set-variable name="aipWindow" value="@{
     var client = (string)context.Variables["aipClientId"];
     var now = context.Timestamp;
-    foreach (var entry in ((string)context.Variables["aipAccess"]).Split(';')) {
+    foreach (var entry in context.Variables.GetValueOrDefault<string>("aipAccess", "").Split(';')) {
       var parts = entry.Split('|');
       if (parts.Length != 4 || parts[0] != client) { continue; }
       if (parts[1] != "active") { return "grant-suspended"; }

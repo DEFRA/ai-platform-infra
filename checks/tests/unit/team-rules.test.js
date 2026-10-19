@@ -202,6 +202,36 @@ describe('checkTeamFile', () => {
     )
   })
 
+  describe('capacity by hosting platform', () => {
+    test('a Foundry deployment needs capacity, whatever SKU word it uses', () => {
+      const { capacity, ...noCapacity } = alphaTeam().deployments[0]
+      const document = { ...alphaTeam(), deployments: [noCapacity] }
+
+      expect(check(document)).toEqual([
+        'deployment gpt-5-nano needs capacity on foundry'
+      ])
+      expect(capacity).toBe(1)
+    })
+
+    test('a deployment on a platform that takes no capacity refuses one', () => {
+      const bedrock = new Map(models)
+      bedrock.set('gpt-5-nano', {
+        ...models.get('gpt-5-nano'),
+        hosting: { platform: 'bedrock', cloud: 'aws' }
+      })
+
+      expect(check(alphaTeam(), { models: bedrock })).toContain(
+        'deployment gpt-5-nano takes no capacity on bedrock'
+      )
+    })
+
+    test('the schema takes any SKU word; the catalogue decides', () => {
+      expect(check(withDeployment({ sku: 'OnDemand' }))).toEqual([
+        'deployment gpt-5-nano sku OnDemand not allowed'
+      ])
+    })
+  })
+
   test('refuses a deployment listed twice', () => {
     const team = alphaTeam()
     const document = {
@@ -244,6 +274,129 @@ describe('checkTeamFile', () => {
     const { oauth, ...team } = alphaTeam({ status: 'removed' })
 
     expect(check(team)).toContain('a removed team keeps no resources')
+  })
+
+  describe('removal lifecycle', () => {
+    const now = new Date('2026-10-18T10:00:00Z')
+    const cooling = registryEntry({ removal: { coolingOffDays: 7 } })
+
+    function removed(revision) {
+      const { oauth, ...team } = alphaTeam({
+        revision,
+        status: 'removed',
+        deployments: []
+      })
+
+      return { ...team, gateway: { ...team.gateway, allowedDeployments: [] } }
+    }
+
+    function pending(removeAfter, revision = 2) {
+      return alphaTeam({ revision, status: 'pending-removal', removeAfter })
+    }
+
+    test('pending-removal must schedule the removal past the cooling-off', () => {
+      const previousText = serialise(alphaTeam())
+
+      expect(
+        check(pending('2026-10-24'), { previousText, entry: cooling, now })
+      ).toEqual([
+        'removeAfter must be 2026-10-25 or later: infradev cools off for 7 days'
+      ])
+      expect(
+        check(pending('2026-10-25'), { previousText, entry: cooling, now })
+      ).toEqual([])
+    })
+
+    test('a scheduled removal keeps its date through later revisions', () => {
+      const previousText = serialise(pending('2026-10-20'))
+
+      expect(
+        check(pending('2026-10-20', 3), { previousText, entry: cooling, now })
+      ).toEqual([])
+    })
+
+    test('a team is removed only once its date has passed', () => {
+      expect(
+        check(removed(3), {
+          previousText: serialise(pending('2026-10-25')),
+          entry: cooling,
+          now
+        })
+      ).toEqual(['removal is scheduled for 2026-10-25'])
+      expect(
+        check(removed(3), {
+          previousText: serialise(pending('2026-10-18')),
+          entry: cooling,
+          now
+        })
+      ).toEqual([])
+    })
+
+    test('an active team goes through pending-removal where the environment cools off', () => {
+      expect(
+        check(removed(2), {
+          previousText: serialise(alphaTeam()),
+          entry: cooling,
+          now
+        })
+      ).toEqual([
+        'a team is removed only after pending-removal: infradev cools off for 7 days'
+      ])
+    })
+
+    test('an active team is removed in one step where the cooling-off is zero', () => {
+      expect(
+        check(removed(2), { previousText: serialise(alphaTeam()), now })
+      ).toEqual([])
+    })
+
+    test('a new team is never removed', () => {
+      expect(check(removed(1), { now })).toEqual([
+        'a new team is never removed'
+      ])
+    })
+
+    test('a removed team may come back active', () => {
+      expect(
+        check(alphaTeam({ revision: 4 }), {
+          previousText: serialise(removed(3)),
+          now
+        })
+      ).toEqual([])
+    })
+
+    test('nothing is checked against itself on main', () => {
+      expect(
+        check(removed(2), { onMain: true, previousText: null, now })
+      ).toEqual([])
+    })
+
+    test('an entry without removal cools off by its class', () => {
+      const { removal, ...entry } = registryEntry({
+        name: 'dev',
+        class: 'consumer-lower'
+      })
+      const dev = {
+        ...pending('2026-10-19'),
+        environment: 'dev'
+      }
+
+      expect(removal).toEqual({ coolingOffDays: 0 })
+      expect(
+        checkTeamFile({
+          path: 'environments/dev/alpha.json',
+          text: serialise(dev),
+          previousText: serialise({ ...alphaTeam(), environment: 'dev' }),
+          entry,
+          params: environmentParams(),
+          models,
+          validators,
+          now
+        }).map((problem) => problem.message)
+      ).toContain(
+        'removeAfter must be 2026-10-20 or later: dev cools off for 2 days'
+      )
+    })
   })
 
   test('refuses a federation where Entra is not enabled', () => {
@@ -341,6 +494,20 @@ describe('checkTeamFile', () => {
     expect(
       check(withOauth({ federations: [federation, federation] }))
     ).toContain('federation beta-api is repeated')
+  })
+
+  test('refuses two federations that trust the same workload', () => {
+    const federation = betaTeam().oauth.federations[0]
+
+    expect(
+      check(
+        withOauth({
+          federations: [federation, { ...federation, name: 'beta-api-again' }]
+        })
+      )
+    ).toContain(
+      `federations beta-api and beta-api-again both trust CDP service ${federation.service}`
+    )
   })
 
   test('refuses more than 40 clients for one team', () => {
