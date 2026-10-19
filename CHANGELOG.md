@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.7.0...v0.8.0) (2026-10-19)
+
+
+### Features
+
+* global gateway guard with named backends, hosting-neutral deployments, removal lifecycle, destroy cap and locks ([#16](https://github.com/DEFRA/ai-platform-infra/issues/16)) ([666bffb](https://github.com/DEFRA/ai-platform-infra/commit/666bffb8531882148be8ae1416d48e85d7dc34b7))
+
 ## [0.7.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.6.0...v0.7.0) (2026-10-15)
 
 
