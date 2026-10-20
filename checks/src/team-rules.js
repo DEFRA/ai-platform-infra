@@ -635,7 +635,13 @@ function checkTeamFile(input) {
  * @param {Map<string, object>} input.models - Catalogue models by slug.
  * @returns {Array<{file: string, message: string}>} Problems.
  */
-function checkResearchCoverage({ path, document, environment, models, params }) {
+function checkResearchCoverage({
+  path,
+  document,
+  environment,
+  models,
+  params
+}) {
   const listed = new Set(document.deployments.map((d) => d.slug))
   const problems = []
 
