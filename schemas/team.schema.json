@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "team.schema.json",
   "title": "AI Platform team file",
-  "description": "environments/{env}/{slug}.json in ai-platform-tenants. Written whole by the submit workflow; never edited in place. Holds no resource names: the naming module derives them.",
+  "description": "environments/{env}/{slug}.json in ai-platform-tenants. Written whole by the submit workflow; never edited in place. Holds no resource names (the naming module derives them), except the research file's deployment names, which are its API's public contract.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -53,15 +53,15 @@
       "required": ["credentialType", "allowedDeployments", "limits"],
       "properties": {
         "credentialType": {
-          "description": "The team tier is OAuth only, by federated credential or client secret; subscription keys are the Research tier's (14 October 2026). The property stays so the shape can grow.",
-          "enum": ["oauth"]
+          "description": "The team tier is OAuth only, by federated credential or client secret (14 October 2026). subscription-key is the Research tier's, and only the platform-owned research file may name it: the checks refuse it anywhere else.",
+          "enum": ["oauth", "subscription-key"]
         },
         "allowedDeployments": {
-          "description": "Catalogue slugs the team API may call; anything else returns 403 model-not-granted.",
+          "description": "What the API may call; anything else returns 403 model-not-granted. A team file lists catalogue slugs, which the gateway maps to derived deployment names. The research file lists deployment names, because nothing translates them.",
           "type": "array",
           "uniqueItems": true,
           "maxItems": 20,
-          "items": { "$ref": "#/$defs/catalogueSlug" }
+          "items": { "$ref": "#/$defs/allowedDeployment" }
         },
         "limits": {
           "type": "object",
@@ -126,8 +126,47 @@
       "if": {
         "properties": { "status": { "const": "removed" } }
       },
-      "then": { "not": { "required": ["oauth"] } },
-      "else": { "required": ["oauth"] }
+      "then": { "not": { "required": ["oauth"] } }
+    },
+    {
+      "description": "A key file has no oauth block and names each deployment, because on the research API the name is the public contract; every other file is OAuth, names none, and has an oauth block until it is removed.",
+      "if": {
+        "type": "object",
+        "required": ["gateway"],
+        "properties": {
+          "gateway": {
+            "type": "object",
+            "required": ["credentialType"],
+            "properties": {
+              "credentialType": { "const": "subscription-key" }
+            }
+          }
+        }
+      },
+      "then": {
+        "not": { "required": ["oauth"] },
+        "properties": {
+          "deployments": {
+            "type": "array",
+            "items": { "type": "object", "required": ["deploymentName"] }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "deployments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "not": { "required": ["deploymentName"] }
+            }
+          }
+        },
+        "if": {
+          "properties": { "status": { "const": "removed" } }
+        },
+        "else": { "required": ["oauth"] }
+      }
     }
   ],
   "$defs": {
@@ -144,6 +183,16 @@
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "maxLength": 40
     },
+    "deploymentName": {
+      "description": "A Foundry deployment name as the research API's callers send it, for example gpt-4.1-nano.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "allowedDeployment": {
+      "description": "A catalogue slug in a team file, a deployment name in the research file; the checks tell them apart by the file's credential type.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
     "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "operationId": {
       "type": "string",
@@ -155,12 +204,13 @@
       "pattern": "^(entra:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|github:[1-9][0-9]{0,19}|app:[a-z][a-z0-9-]{0,38})$"
     },
     "deployment": {
-      "description": "A dedicated deployment of a catalogue model. The SKU and capacity words are the hosting platform's (Foundry: Standard, DataZoneStandard or ProvisionedManaged, capacity in thousands of tokens per minute); the catalogue says which the model offers and the checks say which the hosting needs, so the file stays the same shape whatever hosts the model (18 October 2026).",
+      "description": "A dedicated deployment of a catalogue model. The SKU and capacity words are the hosting platform's (Foundry: Standard, DataZoneStandard or ProvisionedManaged, capacity in thousands of tokens per minute); the catalogue says which the model offers and the checks say which the hosting needs, so the file stays the same shape whatever hosts the model (18 October 2026). Only the research file names a deployment (deploymentName), because nothing translates the name its callers send.",
       "type": "object",
       "additionalProperties": false,
       "required": ["slug", "sku", "status"],
       "properties": {
         "slug": { "$ref": "#/$defs/catalogueSlug" },
+        "deploymentName": { "$ref": "#/$defs/deploymentName" },
         "sku": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]{0,63}$" },
         "capacity": { "type": "integer", "minimum": 1, "maximum": 10000 },
         "status": { "enum": ["active"] }

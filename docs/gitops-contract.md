@@ -34,7 +34,7 @@ restating the rest of `azure`.
 - No secret and no personal data: inputs and files are readable by everyone who can read the
   repository. `updatedBy` and `requestedBy` name exactly one identity and never a name or email
   address (see [traceability](#traceability)).
-- No resource names. The Terraform `naming` module derives every name from CCoE's pattern and the
+- No resource names, except the research file's deployment names (its API's public contract). The Terraform `naming` module derives every name from CCoE's pattern and the
   environment's codes; see [traceability](#traceability).
 
 ## Team file
@@ -42,7 +42,14 @@ restating the rest of `azure`.
 The fields are design C's desired-state schema, with three changes agreed on 13 October 2026:
 `project.name` and `deployments[].deploymentName` are dropped because names are derived, and
 `gateway.allowedDeployments` lists catalogue slugs, which the gateway maps to derived deployment
-names.
+names. The one exception is the research file, below.
+
+The Research tier is one platform-owned team file, `environments/{env}/research.json`: the same
+project, account-child deployments and generated API as a team, but it names `subscription-key`, has no
+`oauth` block, and carries each deployment's Azure name in `deployments[].deploymentName` and in
+`allowedDeployments`, because callers send that name as the imported spec defines it and nothing
+translates it. An engineer commits it (a break-glass pull request); a writer App never does, so no
+portal path writes it. [`examples/`](../examples) holds a fixture.
 
 Rules beyond the schema, enforced by `validate`:
 
@@ -71,7 +78,14 @@ Rules beyond the schema, enforced by `validate`:
 - OAuth only: the team tier's `gateway.credentialType` is `oauth`, and every team that is not
   `removed` has an `oauth` block, using federated credentials, client secrets where
   `secretsAllowed`, or both, including for local development. Subscription keys belong to the Research
-  tier, never to a team (direction 14 October 2026).
+  tier, never to a team (direction 14 October 2026): `subscription-key` is accepted only in the
+  `research` file, which has no `oauth` block, and `research` is not a team's name.
+- The research file: every deployment is a catalogue model offered to the `research` tier with the
+  catalogue's own `deploymentName`, a non-Global SKU (D03) and a Foundry region the environment covers;
+  `allowedDeployments` and `deployments[]` list the same names; and every model the catalogue offers
+  to the research tier in the environment is in it, so a key never reaches a deployment nothing built.
+  Its capacity counts towards each model's quota and each account's 32 deployments with every team's.
+  Only this file may carry `deploymentName`.
 - OAuth: Entra enabled in the registry entry. Setting the entry's `entra.teamRegistrations` to `false`
   (default `true`) skips only each team's app registration, an interim switch for a deploy identity
   that cannot yet create app registrations: the team's project, deployments and API are still applied,

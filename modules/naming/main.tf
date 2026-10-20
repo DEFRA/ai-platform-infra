@@ -71,6 +71,8 @@ locals {
   logical_names = {
     api_management   = "apim-${local.service}-${var.environment}"
     api_audience_app = "api-${local.service}-${var.environment}"
+    # A custom role name is unique per tenant, so it carries the environment.
+    apim_subscription_role = "${local.service}-${var.environment}-apim-subscription-manager"
     foundry_accounts = {
       for region in var.foundry_regions : region => (
         region == local.primary

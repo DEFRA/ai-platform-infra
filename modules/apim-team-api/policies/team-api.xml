@@ -1,20 +1,28 @@
 <policies>
   <inbound>
     <set-variable name="aipTeam" value="${team}" />
-    <set-variable name="aipCredentialType" value="oauth" />
+    <set-variable name="aipCredentialType" value="${credential_type}" />%{ if credential_type == "oauth" }
     <set-variable name="aipClients" value="{{${clients_named_value}}}" />
-    <set-variable name="aipAccess" value="{{${access_named_value}}}" />
+    <set-variable name="aipAccess" value="{{${access_named_value}}}" />%{ endif }
     <set-variable name="aipGranted" value="${granted}" />
     <base />
-    <include-fragment fragment-id="${fragments.whoami}" />
-    <include-fragment fragment-id="${fragments.request_model}" />
-%{ if length(models) > 0 ~}
+    <include-fragment fragment-id="${fragments.whoami}" />%{ if credential_type == "oauth" }
+    <include-fragment fragment-id="${fragments.request_model}" />%{ else }
+    <!-- Research: nothing translates the name; the caller's deployment name is checked against the allow-list and forwarded as sent. -->
+    <set-variable name="aipRequested" value="@{
+      var fromPath = context.Request.MatchedParameters.GetValueOrDefault("deployment-id", "");
+      if (!string.IsNullOrEmpty(fromPath)) { return fromPath; }
+      if (context.Request.Body == null) { return ""; }
+      var body = context.Request.Body.As<JObject>(preserveContent: true);
+      return body["model"] == null ? "" : body["model"].ToString();
+    }" />%{ endif }
+%{ if length(routes) > 0 ~}
     <choose>
-%{ for model in models ~}
-      <when condition="@((string)context.Variables["aipRequested"] == "${model.slug}")">
-        <set-variable name="aipDeployment" value="${model.deployment_name}" />
-        <set-variable name="aipHosting" value="${model.hosting}" />
-        <set-backend-service backend-id="${model.backend_id}" />
+%{ for route in routes ~}
+      <when condition="@((string)context.Variables["aipRequested"] == "${route.match}")">
+        <set-variable name="aipDeployment" value="${route.forward}" />
+        <set-variable name="aipHosting" value="${route.hosting}" />
+        <set-backend-service backend-id="${route.backend_id}" />
       </when>
 %{ endfor ~}
       <otherwise>
@@ -36,12 +44,12 @@
       <set-body>{"code":"model-not-granted"}</set-body>
     </return-response>
 %{ endif ~}
-    <rate-limit-by-key calls="${requests_per_minute}" renewal-period="60" counter-key="@(context.Api.Id)" />
-    <llm-token-limit counter-key="@(context.Api.Id)" tokens-per-minute="${tokens_per_minute}" estimate-prompt-tokens="false" remaining-tokens-header-name="x-ratelimit-remaining-tokens" />
+    <rate-limit-by-key calls="${requests_per_minute}" renewal-period="60" counter-key="@(${counter_key})" />
+    <llm-token-limit counter-key="@(${counter_key})" tokens-per-minute="${tokens_per_minute}" estimate-prompt-tokens="false" remaining-tokens-header-name="x-ratelimit-remaining-tokens" />
     <llm-emit-token-metric namespace="aip">
       <dimension name="team" value="${team}" />
       <dimension name="deployment" value="@((string)context.Variables["aipDeployment"])" />
-      <dimension name="credentialType" value="oauth" />
+      <dimension name="credentialType" value="${credential_type}" />
     </llm-emit-token-metric>
 %{ for hosting in hostings ~}
     <choose>

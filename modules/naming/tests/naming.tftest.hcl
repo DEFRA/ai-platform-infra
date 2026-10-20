@@ -57,6 +57,11 @@ run "uses_logical_labels_where_ccoe_has_no_code" {
     condition     = format(output.team.deployment, "alpha", "gpt-5-nano") == "alpha-gpt-5-nano"
     error_message = "team deployments are named {slug}-{model}"
   }
+
+  assert {
+    condition     = output.names.apim_subscription_role == "aip-infradev-apim-subscription-manager"
+    error_message = "the custom role carries the environment, because role names are unique per tenant"
+  }
 }
 
 run "rejects_an_unknown_sub_type" {

@@ -67,12 +67,12 @@ run "team_policy" {
   }
 
   assert {
-    condition     = azurerm_api_management_named_value.clients.value == "00000000-0000-0000-0000-000000000011"
+    condition     = azurerm_api_management_named_value.clients[0].value == "00000000-0000-0000-0000-000000000011"
     error_message = "the client list holds the team registration"
   }
 
   assert {
-    condition     = azurerm_api_management_named_value.access_window.value == "none"
+    condition     = azurerm_api_management_named_value.access_window[0].value == "none"
     error_message = "access windows start empty; the Portal API activates them"
   }
 
@@ -95,6 +95,144 @@ run "team_policy" {
     condition     = toset(keys(azurerm_api_management_api_operation.this)) == toset(["whoami", "chat-deployment", "chat-v1"])
     error_message = "a chat-completions model exposes its two operations and whoami"
   }
+
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<rate-limit-by-key calls=\"60\" renewal-period=\"60\" counter-key=\"@(context.Api.Id)\" />") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<llm-token-limit counter-key=\"@(context.Api.Id)\"") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<dimension name=\"credentialType\" value=\"oauth\" />")
+    )
+    error_message = "a team's limits are shared by its API and its metric says oauth"
+  }
+
+  assert {
+    condition     = output.named_values == { clients = "aip-alpha-clients", access_window = "aip-alpha-access" }
+    error_message = "a team API publishes its two named values"
+  }
+}
+
+run "research_policy" {
+  command = plan
+
+  variables {
+    team_slug       = "research"
+    api_name        = "research"
+    credential_type = "subscription-key"
+    client_ids      = []
+    named_values    = { clients = "aip-research-clients", access_window = "aip-research-access" }
+    models = [
+      {
+        slug            = "gpt-4-1-nano"
+        deployment_name = "gpt-4.1-nano"
+        hosting         = "foundry"
+        backend_id      = "aip-foundry-swedencentral"
+        api_profile     = "chat-completions"
+      },
+      {
+        slug            = "gpt-4o"
+        deployment_name = "gpt-4o"
+        hosting         = "foundry"
+        backend_id      = "aip-foundry-uksouth"
+        api_profile     = "chat-completions"
+      },
+    ]
+  }
+
+  assert {
+    condition     = azurerm_api_management_api.this.subscription_required
+    error_message = "the research API requires an API-scoped subscription"
+  }
+
+  # The declared type is what makes the global policy run aip-key-guard.
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-variable name=\"aipCredentialType\" value=\"key\" />") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<dimension name=\"credentialType\" value=\"key\" />") &&
+      !strcontains(azurerm_api_management_api_policy.this.xml_content, "value=\"oauth\"")
+    )
+    error_message = "the API declares key in its policy and its metric"
+  }
+
+  assert {
+    condition = (
+      index(split("\n", azurerm_api_management_api_policy.this.xml_content), "    <set-variable name=\"aipCredentialType\" value=\"key\" />") <
+      index(split("\n", azurerm_api_management_api_policy.this.xml_content), "    <base />")
+    )
+    error_message = "the credential tier is declared before <base /> so the global guard sees it"
+  }
+
+  assert {
+    condition     = length(azurerm_api_management_named_value.clients) == 0 && length(azurerm_api_management_named_value.access_window) == 0 && output.named_values == null
+    error_message = "a key API has no client list or access window"
+  }
+
+  assert {
+    condition     = !strcontains(azurerm_api_management_api_policy.this.xml_content, "aipClients") && !strcontains(azurerm_api_management_api_policy.this.xml_content, "aipAccess") && !strcontains(azurerm_api_management_api_policy.this.xml_content, "{{")
+    error_message = "the key policy reads no named value"
+  }
+
+  # No translation: the caller's deployment name is what is allowed and what is forwarded.
+  assert {
+    condition     = !strcontains(azurerm_api_management_api_policy.this.xml_content, "aip-request-model")
+    error_message = "the research path skips aip-request-model"
+  }
+
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "== \"gpt-4.1-nano\")\">") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "== \"gpt-4o\")\">") &&
+      !strcontains(azurerm_api_management_api_policy.this.xml_content, "== \"gpt-4-1-nano\")\">")
+    )
+    error_message = "the allow-list is checked on the raw deployment name, never on a catalogue slug"
+  }
+
+  assert {
+    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-variable name=\"aipDeployment\" value=\"@((string)context.Variables[\"aipRequested\"])\" />")
+    error_message = "the name the caller sent is forwarded as it was sent"
+  }
+
+  assert {
+    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-variable name=\"aipGranted\" value=\"gpt-4.1-nano,gpt-4o\" />")
+    error_message = "whoami lists the deployment names a caller can use"
+  }
+
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-backend-service backend-id=\"aip-foundry-swedencentral\" />") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-backend-service backend-id=\"aip-foundry-uksouth\" />")
+    )
+    error_message = "each deployment still routes to the backend of the account that holds it"
+  }
+
+  assert {
+    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-body>{\"code\":\"model-not-granted\"}</set-body>")
+    error_message = "anything not allowed returns 403 model-not-granted before any backend call"
+  }
+
+  # Each person has a separate allowance (design C #model-access).
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<rate-limit-by-key calls=\"60\" renewal-period=\"60\" counter-key=\"@(context.Subscription.Id)\" />") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<llm-token-limit counter-key=\"@(context.Subscription.Id)\"") &&
+      !strcontains(azurerm_api_management_api_policy.this.xml_content, "context.Api.Id")
+    )
+    error_message = "the limits are counted per subscription, not per API"
+  }
+
+  assert {
+    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<include-fragment fragment-id=\"aip-whoami\" />") && strcontains(azurerm_api_management_api_policy.this.xml_content, "<include-fragment fragment-id=\"aip-backend-foundry\" />")
+    error_message = "whoami and the backend step are still the platform's fragments"
+  }
+}
+
+run "refuses_an_unknown_credential_type" {
+  command = plan
+
+  variables {
+    credential_type = "api-key"
+  }
+
+  expect_failures = [var.credential_type]
 }
 
 run "refuses_more_than_forty_clients" {

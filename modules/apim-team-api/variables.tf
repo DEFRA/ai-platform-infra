@@ -7,6 +7,17 @@ variable "api_name" {
   type        = string
 }
 
+variable "credential_type" {
+  description = "What the API takes from a caller: a validated OAuth token (a team) or an API-scoped subscription key (the platform-owned research API only)."
+  type        = string
+  default     = "oauth"
+
+  validation {
+    condition     = contains(["oauth", "subscription-key"], var.credential_type)
+    error_message = "credential_type is oauth or subscription-key."
+  }
+}
+
 variable "api_management" {
   type = object({
     name                = string
@@ -15,7 +26,7 @@ variable "api_management" {
 }
 
 variable "models" {
-  description = "Granted models: catalogue slug, derived deployment name, the hosting platform, the named backend for it and apiProfile."
+  description = "Granted models: catalogue slug, deployment name (derived for a team, the name callers send for research), the hosting platform, the named backend for it and apiProfile."
   type = list(object({
     slug            = string
     deployment_name = string

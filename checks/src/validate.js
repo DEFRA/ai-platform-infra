@@ -188,6 +188,7 @@ function validateTenantsChange(input) {
         params,
         models: context.models,
         validators: context.validators,
+        writer: author.writer,
         operationId: author.writer ? input.operationId : undefined,
         now: input.now
       })

@@ -8,7 +8,8 @@ import {
   alphaTeam,
   betaTeam,
   pin,
-  registryEntry
+  registryEntry,
+  researchTeam
 } from '../fixtures/gitops-files.js'
 
 const validators = loadValidators(INFRA_DIR)
@@ -17,6 +18,7 @@ describe('loadValidators', () => {
   test.each([
     ['team', 'ai-platform-tenants/environments/infradev/alpha.json'],
     ['team', 'ai-platform-tenants/environments/infradev/beta.json'],
+    ['team', 'ai-platform-tenants/environments/infradev/research.json'],
     ['pin', 'ai-platform-deployments/environments/infradev/platform.json'],
     ['registry', 'ai-platform-environments/registry.json']
   ])('accepts the %s example %s', (schema, path) => {
@@ -53,13 +55,59 @@ describe('loadValidators', () => {
     )
   })
 
-  test('refuses a subscription key for a team: the team tier is OAuth only', () => {
+  test('refuses a credential type that is neither OAuth nor a subscription key', () => {
     const team = alphaTeam({
-      gateway: { ...alphaTeam().gateway, credentialType: 'subscription-key' }
+      gateway: { ...alphaTeam().gateway, credentialType: 'api-key' }
     })
 
     expect(validators.team(team)).toContain(
       '/gateway/credentialType must be equal to one of the allowed values'
+    )
+  })
+
+  describe('a subscription key file', () => {
+    test('takes no oauth block: a key is not a token', () => {
+      const team = researchTeam({ oauth: betaTeam().oauth })
+
+      expect(validators.team(team)).toContainEqual(
+        expect.stringContaining('must NOT be valid')
+      )
+    })
+
+    test('names every deployment, because nothing translates the name', () => {
+      const [first, ...rest] = researchTeam().deployments
+      const { deploymentName, ...unnamed } = first
+
+      expect(
+        validators.team(researchTeam({ deployments: [unnamed, ...rest] }))
+      ).toContain("/deployments/0 must have required property 'deploymentName'")
+    })
+
+    test.each(['gpt 4o', '.gpt', 'gpt/4o', ''])(
+      'refuses %j as a deployment name',
+      (deploymentName) => {
+        const [first, ...rest] = researchTeam().deployments
+
+        expect(
+          validators.team(
+            researchTeam({
+              deployments: [{ ...first, deploymentName }, ...rest]
+            })
+          )
+        ).toContainEqual(
+          expect.stringContaining('/deployments/0/deploymentName must match')
+        )
+      }
+    )
+  })
+
+  test('refuses a deployment name in an OAuth file: a team names no resource', () => {
+    const team = alphaTeam({
+      deployments: [{ ...alphaTeam().deployments[0], deploymentName: 'mine' }]
+    })
+
+    expect(validators.team(team)).toContainEqual(
+      expect.stringContaining('must NOT be valid')
     )
   })
 

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../../../schemas/team.schema.json",
+  "deployments": [
+    {
+      "capacity": 1,
+      "deploymentName": "gpt-4.1-nano",
+      "sku": "DataZoneStandard",
+      "slug": "gpt-4-1-nano",
+      "status": "active"
+    },
+    {
+      "capacity": 1,
+      "deploymentName": "gpt-4o",
+      "sku": "Standard",
+      "slug": "gpt-4o",
+      "status": "active"
+    },
+    {
+      "capacity": 1,
+      "deploymentName": "gpt-5-nano",
+      "sku": "DataZoneStandard",
+      "slug": "gpt-5-nano",
+      "status": "active"
+    }
+  ],
+  "environment": "infradev",
+  "gateway": {
+    "allowedDeployments": [
+      "gpt-4.1-nano",
+      "gpt-4o",
+      "gpt-5-nano"
+    ],
+    "credentialType": "subscription-key",
+    "limits": {
+      "requestsPerMinute": 60,
+      "tokensPerMinute": 1000
+    }
+  },
+  "operationId": "000000000000000000000003",
+  "revision": 1,
+  "schemaVersion": 1,
+  "status": "active",
+  "team": {
+    "serviceCode": "AIP",
+    "slug": "research"
+  },
+  "updatedAt": "2026-10-20T00:00:00.000Z",
+  "updatedBy": "github:583231"
+}
