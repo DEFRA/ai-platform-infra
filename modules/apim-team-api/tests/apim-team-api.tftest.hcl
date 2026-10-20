@@ -109,6 +109,16 @@ run "team_policy" {
     condition     = output.named_values == { clients = "aip-alpha-clients", access_window = "aip-alpha-access" }
     error_message = "a team API publishes its two named values"
   }
+
+  # A team still reads the slug through the shared fragment and maps it to its derived deployment.
+  assert {
+    condition = (
+      !strcontains(azurerm_api_management_api_policy.this.xml_content, "name=\"aipRequested\" value=\"@{") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "== \"gpt-5-nano\")\">") &&
+      strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-variable name=\"aipDeployment\" value=\"alpha-gpt-5-nano\" />")
+    )
+    error_message = "the team path translates a slug to the team's deployment, unlike research"
+  }
 }
 
 run "research_policy" {
