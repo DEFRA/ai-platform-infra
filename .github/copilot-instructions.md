@@ -9,11 +9,12 @@ Public Terraform, schemas, catalogue and `aip-checks` for the AI Platform. It ho
 - **Names.** Every name comes from `modules/naming`. A team file holds no resource name; the one exception is the platform-owned `research.json`.
 - **Credential rules.** Team tier is OAuth only. `subscription-key` is the `research` file's alone, and never authored by a writer App.
 - **Idempotent and deterministic.** Role and assignment IDs derive from the environment; repeat applies are a no-op.
+- **Untested HCL.** Every resource, validation, branch and output has a passing automated test, positive, negative and edge (see [terraform.instructions.md](instructions/terraform.instructions.md)).
 
 ## Conventions
 
 - Terraform `.terraform-version`; providers exact-pinned in roots with lock files for linux, darwin and windows; modules state minimum versions. Validated inputs, minimal outputs, tags per `docs/modules.md`, `ignore_changes = [tags["ServiceCode"]]` on tagged resources.
-- Every module has `terraform.tf`, `variables.tf`, `main.tf`, `outputs.tf` and a mock-provider test. Test with `terraform -chdir=<dir> test`.
+- Every module and root has `terraform.tf`, `variables.tf`, `main.tf`, `outputs.tf` and tests that cover all of it, locally and in CI. Best practices and testing rules: [terraform.instructions.md](instructions/terraform.instructions.md). Test with `terraform -chdir=<dir> test`.
 - APIM policy XML: only expressions API Management allows (`policy-expressions.test.js`), escape `&lt;` `&gt;` `&quot;` where XML needs it.
 - Schemas change by expand then contract across two releases. A catalogue change needs a release and the backend's `CATALOGUE_REF` moved.
 - Update `docs/` and `examples/` with the change; keep Markdown short and Prettier-clean.
