@@ -24,5 +24,5 @@ Public Terraform, schemas, catalogue and `aip-checks` for the AI Platform. It ho
 1. Branch `<type>/<description>` from current `main`; conventional commits (release-please reads them).
 2. Before pushing: `terraform fmt -recursive`, `terraform -chdir=<dir> test` for each root and module touched, `npm test --prefix checks`, and Prettier from both `checks/` and the repo root.
 3. Open the PR with the template filled in. State what a plan would show; never apply from a PR.
-4. **Request Copilot review** once checks are green: `gh pr edit <n> --add-reviewer "@copilot"`. Read every comment, fix it or reply with the reason, resolve the thread, then push. Copilot is advisory and never replaces the human approval the ruleset requires.
+4. **Request Copilot review** once checks are green: `gh pr edit <n> --add-reviewer "@copilot"`. When it lands, fix every comment or reply with the reason it does not apply, push, then resolve each thread (GraphQL `resolveReviewThread`). Re-request after a substantial push and repeat until nothing is unresolved. Copilot is advisory and never replaces the human approval the ruleset requires.
 5. Then request a human reviewer. Do not merge your own PR, bypass checks or use `--no-verify`.
