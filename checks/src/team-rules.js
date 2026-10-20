@@ -84,6 +84,15 @@ function regionFor(sku, params) {
   )
 }
 
+// A research model the environment has no Foundry region for cannot be
+// deployed there, so the file is not asked to list it (checkDeployments
+// refuses it from the other side).
+function deployableInEnvironment(model, params) {
+  return skusForTier(model, 'research').some(
+    (sku) => !GLOBAL_SKU.test(sku.name) && regionFor(sku, params)
+  )
+}
+
 // A research deployment's name is the research API's public contract, so it
 // must be exactly the catalogue's deploymentName, which the backend and the
 // portal's samples read: a drift is a broken endpoint for every caller.
@@ -626,7 +635,7 @@ function checkTeamFile(input) {
  * @param {Map<string, object>} input.models - Catalogue models by slug.
  * @returns {Array<{file: string, message: string}>} Problems.
  */
-function checkResearchCoverage({ path, document, environment, models }) {
+function checkResearchCoverage({ path, document, environment, models, params }) {
   const listed = new Set(document.deployments.map((d) => d.slug))
   const problems = []
 
@@ -635,7 +644,8 @@ function checkResearchCoverage({ path, document, environment, models }) {
       model.tiers.includes('research') &&
       model.eligibility.eligible &&
       model.environments.includes(environment) &&
-      GRANTABLE.has(model.lifecycle.status)
+      GRANTABLE.has(model.lifecycle.status) &&
+      deployableInEnvironment(model, params)
 
     if (offered && !listed.has(slug)) {
       problems.push(
@@ -692,7 +702,13 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
 
     if (document.team.slug === RESEARCH_SLUG && document.status !== 'removed') {
       problems.push(
-        ...checkResearchCoverage({ path, document, environment, models })
+        ...checkResearchCoverage({
+          path,
+          document,
+          environment,
+          models,
+          params
+        })
       )
     }
 
