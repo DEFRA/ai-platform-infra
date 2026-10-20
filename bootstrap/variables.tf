@@ -27,6 +27,12 @@ variable "grant_role_assignment_admin" {
   default     = true
 }
 
+variable "grant_user_access_administrator" {
+  description = "Give the deploy identity User Access Administrator, at the same scope as Contributor. The platform apply creates a custom role definition and assigns it (modules/apim-subscription-role), which the constrained Role Based Access Control Administrator grant cannot do. Leave false where it already holds the role there (D10: only if missing)."
+  type        = bool
+  default     = false
+}
+
 variable "grant_contributor" {
   description = "Give the deploy identity Contributor, at the existing resource group when `existing_resource_group` is set and at the subscription otherwise. Set false where it already holds Contributor there (D10: only if missing)."
   type        = bool

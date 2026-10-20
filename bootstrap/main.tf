@@ -183,6 +183,15 @@ resource "azurerm_role_assignment" "deploy_contributor" {
   principal_type     = "ServicePrincipal"
 }
 
+resource "azurerm_role_assignment" "deploy_user_access_administrator" {
+  count = var.grant_user_access_administrator ? 1 : 0
+
+  scope              = local.rbac_scope
+  role_definition_id = local.roles.user_access_administrator
+  principal_id       = data.azuread_service_principal.deploy.object_id
+  principal_type     = "ServicePrincipal"
+}
+
 resource "azurerm_role_assignment" "deploy_rbac_administrator" {
   count = var.grant_role_assignment_admin ? 1 : 0
 

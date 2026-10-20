@@ -28,7 +28,8 @@ already holds Contributor there.
    the Portal API's research subscriptions). The constrained Role Based Access Control Administrator grant
    cannot write a role definition or assign a role outside its delegable list, so the deploy identity needs
    User Access Administrator (or Owner) on the platform's scope as well. Infradev's holds it on the whole
-   subscription (confirmed 20 October 2026); grant it in any other environment before its first platform apply.
+   subscription (confirmed 20 October 2026); in any other environment set `grant_user_access_administrator`
+   to `true` (default `false`, so a holder is left alone) before its first platform apply.
 
 ## Run
 

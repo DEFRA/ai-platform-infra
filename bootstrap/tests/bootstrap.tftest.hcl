@@ -70,6 +70,28 @@ run "grants_no_contributor_where_the_deploy_identity_holds_it" {
   }
 }
 
+run "grants_user_access_administrator_only_when_asked" {
+  command = plan
+
+  assert {
+    condition     = length(azurerm_role_assignment.deploy_user_access_administrator) == 0
+    error_message = "User Access Administrator is opt-in: an environment that already holds it is left alone"
+  }
+}
+
+run "grants_user_access_administrator_at_the_contributor_scope" {
+  command = plan
+
+  variables {
+    grant_user_access_administrator = true
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.deploy_user_access_administrator[0].scope == azurerm_role_assignment.deploy_contributor[0].scope && azurerm_role_assignment.deploy_user_access_administrator[0].principal_type == "ServicePrincipal"
+    error_message = "the platform's custom role needs a role that can write definitions, at the scope the platform is built in"
+  }
+}
+
 run "refuses_a_missing_state_repository" {
   command = plan
 

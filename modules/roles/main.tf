@@ -12,6 +12,7 @@ locals {
     monitoring_metrics_publisher  = "3913510d-42f4-4e42-8a64-420c390055eb"
     rbac_administrator            = "f58310d9-a9f6-439a-9e8d-f62e7b41a168"
     storage_blob_data_contributor = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+    user_access_administrator     = "18d7d88d-d35e-4fb5-a5c3-7773c20a72d9"
   }
 
   # The data-plane roles the deploy identity may assign (bootstrap ABAC).
