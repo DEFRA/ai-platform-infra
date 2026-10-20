@@ -110,6 +110,11 @@ run "team_policy" {
     error_message = "a team API publishes its two named values"
   }
 
+  assert {
+    condition     = !strcontains(azurerm_api_management_api_policy.this.xml_content, "set-query-parameter")
+    error_message = "a team API takes a token, so it touches no query parameter"
+  }
+
   # A team still reads the slug through the shared fragment and maps it to its derived deployment.
   assert {
     condition = (
@@ -232,6 +237,12 @@ run "research_policy" {
   assert {
     condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<include-fragment fragment-id=\"aip-whoami\" />") && strcontains(azurerm_api_management_api_policy.this.xml_content, "<include-fragment fragment-id=\"aip-backend-foundry\" />")
     error_message = "whoami and the backend step are still the platform's fragments"
+  }
+
+  # The key also arrives as the default subscription-key query parameter, which the backend fragment does not remove.
+  assert {
+    condition     = strcontains(azurerm_api_management_api_policy.this.xml_content, "<set-query-parameter name=\"subscription-key\" exists-action=\"delete\" />")
+    error_message = "a key sent in the query string is not forwarded to the backend"
   }
 }
 

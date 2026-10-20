@@ -725,6 +725,18 @@ describe('the platform-owned research file', () => {
     test('leaves an environment with no research file alone', () => {
       expect(environmentProblems([alphaTeam()])).toEqual([])
     })
+
+    test('keeps a removed research file usable: it holds nothing to reconcile', () => {
+      const team = researchTeam()
+      const removed = researchTeam({
+        status: 'removed',
+        deployments: [],
+        gateway: { ...team.gateway, allowedDeployments: [] }
+      })
+
+      expect(check(removed, { onMain: true })).toEqual([])
+      expect(environmentProblems([removed])).toEqual([])
+    })
   })
 })
 

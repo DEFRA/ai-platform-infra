@@ -15,7 +15,8 @@
       if (context.Request.Body == null) { return ""; }
       var body = context.Request.Body.As<JObject>(preserveContent: true);
       return body["model"] == null ? "" : body["model"].ToString();
-    }" />%{ endif }
+    }" />
+    <set-query-parameter name="subscription-key" exists-action="delete" />%{ endif }
 %{ if length(routes) > 0 ~}
     <choose>
 %{ for route in routes ~}

@@ -690,7 +690,7 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
       }
     }
 
-    if (document.team.slug === RESEARCH_SLUG) {
+    if (document.team.slug === RESEARCH_SLUG && document.status !== 'removed') {
       problems.push(
         ...checkResearchCoverage({ path, document, environment, models })
       )
