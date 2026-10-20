@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.8.0...v0.9.0) (2026-10-20)
+
+
+### Features
+
+* research tier as a platform-owned team file with subscription keys ([#18](https://github.com/DEFRA/ai-platform-infra/issues/18)) ([812b106](https://github.com/DEFRA/ai-platform-infra/commit/812b10664c4eb1705e3833ef5cdf83f458e44e28))
+
 ## [0.8.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.7.0...v0.8.0) (2026-10-19)
 
 
