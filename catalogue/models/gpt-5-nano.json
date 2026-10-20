@@ -10,7 +10,7 @@
     { "name": "GlobalStandard", "capacity": 250, "tiers": ["research"] },
     {
       "name": "DataZoneStandard",
-      "tiers": ["team"],
+      "tiers": ["team", "research"],
       "regions": ["swedencentral"],
       "dataZone": "eu"
     }

@@ -77,8 +77,9 @@ variables {
     key                  = "platform.tfstate"
   }
   team_sources = {
-    alpha = { sha = "1111111111111111111111111111111111111111", operation_id = "000000000000000000000001" }
-    beta  = { sha = "2222222222222222222222222222222222222222", operation_id = "000000000000000000000002" }
+    alpha    = { sha = "1111111111111111111111111111111111111111", operation_id = "000000000000000000000001" }
+    beta     = { sha = "2222222222222222222222222222222222222222", operation_id = "000000000000000000000002" }
+    research = { sha = "3333333333333333333333333333333333333333", operation_id = "000000000000000000000003" }
   }
   teams = {
     alpha = {
@@ -126,6 +127,28 @@ variables {
       operationId = "000000000000000000000002"
       updatedBy   = "entra:00000000-0000-0000-0000-000000000001"
       updatedAt   = "2026-10-13T00:00:00.000Z"
+    }
+    # The platform-owned research team: a subscription key, no oauth block, and
+    # deployment names written in the file because they are its API's contract.
+    research = {
+      schemaVersion = 1
+      revision      = 1
+      environment   = "infradev"
+      status        = "active"
+      team          = { slug = "research", serviceCode = "AIP" }
+      deployments = [
+        { slug = "gpt-4-1-nano", deploymentName = "gpt-4.1-nano", sku = "DataZoneStandard", capacity = 1, status = "active" },
+        { slug = "gpt-4o", deploymentName = "gpt-4o", sku = "Standard", capacity = 1, status = "active" },
+        { slug = "gpt-5-nano", deploymentName = "gpt-5-nano", sku = "DataZoneStandard", capacity = 1, status = "active" },
+      ]
+      gateway = {
+        credentialType     = "subscription-key"
+        allowedDeployments = ["gpt-4.1-nano", "gpt-4o", "gpt-5-nano"]
+        limits             = { tokensPerMinute = 1000, requestsPerMinute = 60 }
+      }
+      operationId = "000000000000000000000003"
+      updatedBy   = "github:583231"
+      updatedAt   = "2026-10-20T00:00:00.000Z"
     }
   }
 }
@@ -276,6 +299,148 @@ run "refuses_a_subscription_key_team" {
     teams = {
       alpha = merge(var.teams.alpha, {
         gateway = merge(var.teams.alpha.gateway, { credentialType = "subscription-key" })
+      })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "applies_the_research_team_beside_the_others" {
+  command = apply
+
+  assert {
+    condition = (
+      output.teams.research.deployments["gpt-4-1-nano"].name == "gpt-4.1-nano" &&
+      output.teams.research.deployments["gpt-4o"].name == "gpt-4o" &&
+      output.teams.research.deployments["gpt-5-nano"].name == "gpt-5-nano"
+    )
+    error_message = "a research deployment keeps the name its callers send; nothing derives it"
+  }
+
+  assert {
+    condition = (
+      output.teams.research.deployments["gpt-4-1-nano"].region == "swedencentral" &&
+      output.teams.research.deployments["gpt-4o"].region == "uksouth" &&
+      output.teams.research.deployments["gpt-4o"].backend == "aip-foundry-uksouth"
+    )
+    error_message = "each deployment is an account child in the region of its research SKU, routed to that account's backend"
+  }
+
+  assert {
+    condition     = output.teams.research.registration == null && output.teams.alpha.registration != null
+    error_message = "the research team takes no token, so it has no registration even where team registrations are on"
+  }
+
+  assert {
+    condition     = output.teams.research.api.url == "https://apim-aip-infradev.azure-api.net/research" && output.teams.research.api.named_values == null
+    error_message = "the research API sits at /research and has no OAuth named values"
+  }
+
+  assert {
+    condition     = output.teams.research.project.name == "aip-research"
+    error_message = "the research project is a shared project built by the same module as a team's"
+  }
+
+  assert {
+    condition     = output.teams.alpha.deployments["gpt-5-nano"].name == "alpha-gpt-5-nano" && output.teams.alpha.api.named_values.clients == "aip-alpha-clients"
+    error_message = "a team beside it is unchanged: derived names and its OAuth named values"
+  }
+}
+
+run "refuses_a_team_that_is_not_research_holding_a_key" {
+  command = plan
+
+  variables {
+    teams = {
+      gamma = merge(var.teams.research, { team = { slug = "gamma", serviceCode = "AIP" } })
+    }
+    team_sources = {
+      gamma = var.team_sources.research
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_the_research_team_taking_a_token" {
+  command = plan
+
+  variables {
+    teams = {
+      research = merge(var.teams.alpha, { team = { slug = "research", serviceCode = "AIP" } })
+    }
+    team_sources = {
+      research = var.team_sources.research
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_a_key_team_with_an_oauth_block" {
+  command = plan
+
+  variables {
+    teams = {
+      research = merge(var.teams.research, { oauth = var.teams.alpha.oauth })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_a_deployment_name_in_a_team_file" {
+  command = plan
+
+  variables {
+    teams = {
+      alpha = merge(var.teams.alpha, {
+        deployments = [{ slug = "gpt-5-nano", deploymentName = "mine", sku = "DataZoneStandard", capacity = 1, status = "active" }]
+      })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_an_unnamed_research_deployment" {
+  command = plan
+
+  variables {
+    teams = {
+      research = merge(var.teams.research, {
+        deployments = [{ slug = "gpt-5-nano", sku = "DataZoneStandard", capacity = 1, status = "active" }]
+        gateway     = merge(var.teams.research.gateway, { allowedDeployments = ["gpt-5-nano"] })
+      })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_research_allowing_a_slug_nobody_named" {
+  command = plan
+
+  variables {
+    teams = {
+      research = merge(var.teams.research, {
+        gateway = merge(var.teams.research.gateway, { allowedDeployments = ["gpt-4-1-nano"] })
+      })
+    }
+  }
+
+  expect_failures = [var.teams]
+}
+
+run "refuses_a_global_research_sku" {
+  command = plan
+
+  variables {
+    teams = {
+      research = merge(var.teams.research, {
+        deployments = [{ slug = "gpt-5-nano", deploymentName = "gpt-5-nano", sku = "GlobalStandard", capacity = 1, status = "active" }]
+        gateway     = merge(var.teams.research.gateway, { allowedDeployments = ["gpt-5-nano"] })
       })
     }
   }

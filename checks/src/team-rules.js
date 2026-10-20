@@ -6,6 +6,10 @@ const MAX_CLIENTS = 40
 const TEAM_PATH = /^environments\/([a-z][a-z0-9]{1,15})\/([^/]+)\.json$/
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const GRANTABLE = new Set(['available', 'eligible'])
+const GLOBAL_SKU = /^Global/
+// The one file that may name subscription-key: an engineer's, not a team's.
+const RESEARCH_SLUG = 'research'
+const SUBSCRIPTION_KEY = 'subscription-key'
 // Every team's dedicated deployments share the environment's Foundry account
 // in a region, and Azure allows 32 model deployments per Foundry resource
 // (Microsoft Learn, Foundry Models quotas and limits, checked 14 Oct 2026).
@@ -21,6 +25,33 @@ const ENTRA_OBJECTS_PER_TEAM = 2
 
 function problem(file, message) {
   return { file, message }
+}
+
+/**
+ * The catalogue tier a file's deployments belong to: its credential type
+ * decides it, since subscription keys are the Research tier's alone.
+ *
+ * @param {object} document - A team file.
+ * @returns {'research' | 'team'} The tier.
+ */
+function tierOf(document) {
+  return document.gateway.credentialType === SUBSCRIPTION_KEY
+    ? 'research'
+    : 'team'
+}
+
+/**
+ * What the gateway allows by: a deployment's catalogue slug in a team file,
+ * its Azure name in the research file, where nothing translates it.
+ *
+ * @param {object} document - A team file.
+ * @param {{slug: string, deploymentName?: string}} deployment - One entry.
+ * @returns {string} The allowed-deployments key.
+ */
+function grantKey(document, deployment) {
+  return tierOf(document) === 'research'
+    ? deployment.deploymentName
+    : deployment.slug
 }
 
 // entra.teamRegistrations false skips only the per-team app registration.
@@ -53,9 +84,31 @@ function regionFor(sku, params) {
   )
 }
 
+// A research deployment's name is the research API's public contract, so it
+// must be exactly the catalogue's deploymentName, which the backend and the
+// portal's samples read: a drift is a broken endpoint for every caller.
+function checkDeploymentName(path, label, deployment, model) {
+  if (!model.deploymentName) {
+    return [problem(path, `${label} has no deploymentName in the catalogue`)]
+  }
+
+  if (deployment.deploymentName !== model.deploymentName) {
+    return [
+      problem(
+        path,
+        `${label} deploymentName ${deployment.deploymentName} must be ` +
+          `${model.deploymentName}, the catalogue's`
+      )
+    ]
+  }
+
+  return []
+}
+
 function checkDeployments(path, document, previous, context) {
   const { models, params } = context
   const environment = document.environment
+  const tier = tierOf(document)
   const problems = []
   const seen = new Set()
   const previousSlugs = new Set(
@@ -77,8 +130,13 @@ function checkDeployments(path, document, previous, context) {
       continue
     }
 
-    if (!model.tiers.includes('team') || !model.eligibility.eligible) {
-      problems.push(problem(path, `${label} is not eligible for teams`))
+    if (!model.tiers.includes(tier) || !model.eligibility.eligible) {
+      problems.push(
+        problem(
+          path,
+          `${label} is not eligible for ${tier === 'research' ? 'the research tier' : 'teams'}`
+        )
+      )
     }
 
     if (!model.environments.includes(environment)) {
@@ -94,16 +152,27 @@ function checkDeployments(path, document, previous, context) {
       problems.push(problem(path, `${label} is ${status}: ${rule}`))
     }
 
-    const sku = skusForTier(model, 'team').find(
+    const sku = skusForTier(model, tier).find(
       (candidate) => candidate.name === deployment.sku
     )
 
     if (!sku) {
       problems.push(problem(path, `${label} sku ${deployment.sku} not allowed`))
+    } else if (tier === 'research' && GLOBAL_SKU.test(sku.name)) {
+      problems.push(
+        problem(
+          path,
+          `${label} sku ${sku.name} is a Global type, excluded by D03`
+        )
+      )
     } else if (!regionFor(sku, params)) {
       problems.push(
         problem(path, `${label} has no Foundry region in ${environment}`)
       )
+    }
+
+    if (tier === 'research') {
+      problems.push(...checkDeploymentName(path, label, deployment, model))
     }
 
     // Capacity is the hosting platform's word: Foundry sizes a deployment by
@@ -141,16 +210,32 @@ function checkDeployments(path, document, previous, context) {
 
 function checkGateway(path, document) {
   const problems = []
-  const dedicated = new Set(document.deployments.map((d) => d.slug))
+  const research = tierOf(document) === 'research'
+  const dedicated = new Set(
+    document.deployments.map((deployment) => grantKey(document, deployment))
+  )
+  const allowed = new Set(document.gateway.allowedDeployments)
 
-  for (const slug of document.gateway.allowedDeployments) {
-    if (!dedicated.has(slug)) {
+  for (const entry of allowed) {
+    if (!dedicated.has(entry)) {
       problems.push(
         problem(
           path,
-          `allowedDeployments ${slug} is not a dedicated deployment of ` +
-            'this team; shared Research grants are not built yet'
+          research
+            ? `allowedDeployments ${entry} is not a deployment in this file`
+            : `allowedDeployments ${entry} is not a dedicated deployment of ` +
+                'this team; shared Research grants are not built yet'
         )
+      )
+    }
+  }
+
+  // Nothing translates a research name, so one that is deployed but not
+  // allowed is a deployment no caller can reach.
+  for (const name of research ? dedicated : []) {
+    if (!allowed.has(name)) {
+      problems.push(
+        problem(path, `deployment ${name} is not in allowedDeployments`)
       )
     }
   }
@@ -378,6 +463,54 @@ function checkDeletion(path, previousText) {
 }
 
 /**
+ * Subscription keys belong to the Research tier, and the Research tier to one
+ * platform-owned file: an engineer commits it, no writer App does, and no team
+ * can acquire a key by editing its own file (direction 14 October 2026).
+ *
+ * @param {string} path - Team file path.
+ * @param {object} document - The team file as written.
+ * @param {boolean} [writer] - A writer App authored the change.
+ * @returns {Array<{file: string, message: string}>} Problems.
+ */
+function checkResearchFile(path, document, writer) {
+  const research = document.team.slug === RESEARCH_SLUG
+  const key = document.gateway.credentialType === SUBSCRIPTION_KEY
+  const problems = []
+
+  if (key && !research) {
+    problems.push(
+      problem(
+        path,
+        `only the platform-owned ${RESEARCH_SLUG} file may use ` +
+          `${SUBSCRIPTION_KEY}; a team is OAuth only`
+      )
+    )
+  }
+
+  if (research && !key) {
+    problems.push(
+      problem(
+        path,
+        `${RESEARCH_SLUG} is the platform's, not a team's: its file uses ` +
+          SUBSCRIPTION_KEY
+      )
+    )
+  }
+
+  if (research && writer) {
+    problems.push(
+      problem(
+        path,
+        `the ${RESEARCH_SLUG} file is platform-owned: an engineer commits ` +
+          'it, never a writer App'
+      )
+    )
+  }
+
+  return problems
+}
+
+/**
  * Validates one team file as written: path, size, serialisation, schema,
  * revision, catalogue, gateway and OAuth rules.
  *
@@ -390,6 +523,7 @@ function checkDeletion(path, previousText) {
  * @param {Map<string, object>} input.models - Catalogue models by slug.
  * @param {Record<string, Function>} input.validators - Schema validators.
  * @param {string} [input.operationId] - Operation the change belongs to.
+ * @param {boolean} [input.writer] - A writer App authored the change.
  * @param {boolean} [input.onMain] - The file is already on main, so its
  *   deployments are grants it holds rather than new ones.
  * @returns {Array<{file: string, message: string}>} Problems.
@@ -435,6 +569,8 @@ function checkTeamFile(input) {
     problems.push(problem(path, `operationId must be ${operationId}`))
   }
 
+  problems.push(...checkResearchFile(path, document, input.writer))
+
   const previous = previousText ? JSON.parse(previousText) : null
 
   if (previous && document.revision <= previous.revision) {
@@ -476,9 +612,50 @@ function checkTeamFile(input) {
 }
 
 /**
+ * The catalogue's half of the research reconciliation: a model it offers to
+ * the Research tier in this environment, and which is grantable, must be in
+ * the research file, or the backend issues a key that fails at the gateway
+ * because nothing deployed the name the portal tells people to call. The
+ * file's half (every deployment is a catalogue model with its deploymentName)
+ * is checkDeployments.
+ *
+ * @param {object} input - The research file and the catalogue.
+ * @param {string} input.path - Research file path.
+ * @param {object} input.document - The research file.
+ * @param {string} input.environment - Environment name.
+ * @param {Map<string, object>} input.models - Catalogue models by slug.
+ * @returns {Array<{file: string, message: string}>} Problems.
+ */
+function checkResearchCoverage({ path, document, environment, models }) {
+  const listed = new Set(document.deployments.map((d) => d.slug))
+  const problems = []
+
+  for (const [slug, model] of models) {
+    const offered =
+      model.tiers.includes('research') &&
+      model.eligibility.eligible &&
+      model.environments.includes(environment) &&
+      GRANTABLE.has(model.lifecycle.status)
+
+    if (offered && !listed.has(slug)) {
+      problems.push(
+        problem(
+          path,
+          `the catalogue offers ${slug} to the research tier in ${environment}; ` +
+            `add it to the research file as ${model.deploymentName}`
+        )
+      )
+    }
+  }
+
+  return problems
+}
+
+/**
  * Rules across every team file in one environment: capacity per model
  * against the environment quota, deployments per Foundry account against
- * Azure's limit, and one team per CDP service.
+ * Azure's limit, one team per CDP service, and the research file against the
+ * catalogue's research models.
  *
  * @param {object} input - The environment's team files.
  * @param {Array<{path: string, document: object}>} input.teams - Parsed,
@@ -505,12 +682,18 @@ function checkEnvironmentTeams({ teams, environment, models, params, entry }) {
 
       const sku = skusForTier(
         models.get(deployment.slug) ?? { skus: [] },
-        'team'
+        tierOf(document)
       ).find((candidate) => candidate.name === deployment.sku)
       const region = sku && regionFor(sku, params)
       if (region) {
         perAccount.set(region, (perAccount.get(region) ?? 0) + 1)
       }
+    }
+
+    if (document.team.slug === RESEARCH_SLUG && document.status !== 'removed') {
+      problems.push(
+        ...checkResearchCoverage({ path, document, environment, models })
+      )
     }
 
     if (document.oauth && teamRegistrations(entry)) {

@@ -11,6 +11,7 @@ import {
   alphaTeam,
   betaTeam,
   registryEntry,
+  researchTeam,
   serialise,
   teamPath
 } from '../fixtures/gitops-files.js'
@@ -553,6 +554,188 @@ describe('checkTeamFile', () => {
       }
 
       expect(check(withOauth({ exception }), { entry })).toEqual([])
+    })
+  })
+})
+
+describe('the platform-owned research file', () => {
+  function renamed(deployments, allowedDeployments) {
+    const team = researchTeam()
+
+    return researchTeam({
+      deployments,
+      gateway: { ...team.gateway, allowedDeployments }
+    })
+  }
+
+  test('accepts the research example', () => {
+    expect(check(researchTeam())).toEqual([])
+  })
+
+  test('is the only file that may use a subscription key', () => {
+    const document = researchTeam({
+      team: { slug: 'gamma', serviceCode: 'AIP' }
+    })
+
+    expect(check(document)).toEqual([
+      'only the platform-owned research file may use subscription-key; a team is OAuth only'
+    ])
+  })
+
+  test('is not a team name: a team called research would take its path', () => {
+    const document = alphaTeam({
+      team: { slug: 'research', serviceCode: 'ZZZ' }
+    })
+
+    expect(check(document)).toEqual([
+      "research is the platform's, not a team's: its file uses subscription-key"
+    ])
+  })
+
+  test("is an engineer's: a writer App never writes it", () => {
+    expect(check(researchTeam(), { writer: true })).toEqual([
+      'the research file is platform-owned: an engineer commits it, never a writer App'
+    ])
+  })
+
+  test('names each deployment exactly as the catalogue does', () => {
+    const [first, ...rest] = researchTeam().deployments
+    const document = renamed(
+      [{ ...first, deploymentName: 'gpt-4-1-nano' }, ...rest],
+      ['gpt-4-1-nano', 'gpt-4o', 'gpt-5-nano']
+    )
+
+    expect(check(document)).toEqual([
+      "deployment gpt-4-1-nano deploymentName gpt-4-1-nano must be gpt-4.1-nano, the catalogue's"
+    ])
+  })
+
+  test('refuses a model the catalogue does not offer to the research tier', () => {
+    const [first, ...rest] = researchTeam().deployments
+    const document = renamed(
+      [{ ...first, slug: 'gpt-4o-2', deploymentName: 'gpt-4o-2' }, ...rest],
+      ['gpt-4o-2', 'gpt-4o', 'gpt-5-nano']
+    )
+
+    expect(check(document)).toContain(
+      'deployment gpt-4o-2 is not offered in infradev'
+    )
+  })
+
+  test('refuses a Global deployment type (D03)', () => {
+    const [first, ...rest] = researchTeam().deployments
+    const document = renamed(
+      [{ ...first, sku: 'GlobalStandard' }, ...rest],
+      researchTeam().gateway.allowedDeployments
+    )
+
+    expect(check(document)).toEqual([
+      'deployment gpt-4-1-nano sku GlobalStandard is a Global type, excluded by D03'
+    ])
+  })
+
+  test('allows only deployments in the file, by the name callers send', () => {
+    const team = researchTeam()
+    const document = renamed(team.deployments, [
+      ...team.gateway.allowedDeployments,
+      'gpt-5-mini'
+    ])
+
+    expect(check(document)).toEqual([
+      'allowedDeployments gpt-5-mini is not a deployment in this file'
+    ])
+  })
+
+  test('allows every deployment: a deployment no caller can reach is a mistake', () => {
+    const team = researchTeam()
+    const document = renamed(team.deployments, ['gpt-4.1-nano', 'gpt-4o'])
+
+    expect(check(document)).toEqual([
+      'deployment gpt-5-nano is not in allowedDeployments'
+    ])
+  })
+
+  test('refuses a token limit above its capacity, as a team does', () => {
+    const team = researchTeam()
+    const document = researchTeam({
+      gateway: {
+        ...team.gateway,
+        limits: { tokensPerMinute: 3001, requestsPerMinute: 60 }
+      }
+    })
+
+    expect(check(document)).toEqual([
+      "tokensPerMinute exceeds the team's capacity of 3000"
+    ])
+  })
+
+  describe('against the whole environment', () => {
+    function environmentProblems(teams) {
+      return checkEnvironmentTeams({
+        teams: teams.map((document) => ({
+          path: teamPath(document),
+          document
+        })),
+        environment: 'infradev',
+        models,
+        params: environmentParams(),
+        entry: registryEntry()
+      }).map((problem) => problem.message)
+    }
+
+    test('holds every model the catalogue offers to research in infradev', () => {
+      expect(environmentProblems([researchTeam()])).toEqual([])
+    })
+
+    test('refuses a file that leaves out a model the catalogue offers', () => {
+      const team = researchTeam()
+      const document = renamed(team.deployments.slice(0, 2), [
+        'gpt-4.1-nano',
+        'gpt-4o'
+      ])
+
+      expect(environmentProblems([document])).toEqual([
+        'the catalogue offers gpt-5-nano to the research tier in infradev; add it to the research file as gpt-5-nano'
+      ])
+    })
+
+    test("adds its capacity to every team's against the model quota", () => {
+      const teams = [0, 1].map((index) =>
+        withDeployment(
+          { capacity: 5 },
+          alphaTeam({ team: { slug: `team-${index}`, serviceCode: 'ZZZ' } })
+        )
+      )
+
+      expect(environmentProblems([researchTeam(), ...teams])).toEqual([
+        'gpt-5-nano capacity 11 exceeds the infradev quota 10'
+      ])
+    })
+
+    test('counts its deployments in the Foundry account limit', () => {
+      const teams = Array.from({ length: 31 }, (_, index) =>
+        alphaTeam({ team: { slug: `team-${index}`, serviceCode: 'ZZZ' } })
+      )
+
+      expect(environmentProblems([researchTeam(), ...teams])).toContain(
+        'the swedencentral Foundry account would hold 33 model deployments; Azure allows 32'
+      )
+    })
+
+    test('leaves an environment with no research file alone', () => {
+      expect(environmentProblems([alphaTeam()])).toEqual([])
+    })
+
+    test('keeps a removed research file usable: it holds nothing to reconcile', () => {
+      const team = researchTeam()
+      const removed = researchTeam({
+        status: 'removed',
+        deployments: [],
+        gateway: { ...team.gateway, allowedDeployments: [] }
+      })
+
+      expect(check(removed, { onMain: true })).toEqual([])
+      expect(environmentProblems([removed])).toEqual([])
     })
   })
 })

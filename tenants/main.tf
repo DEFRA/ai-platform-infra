@@ -15,6 +15,10 @@ data "terraform_remote_state" "platform" {
 locals {
   platform = data.terraform_remote_state.platform.outputs
 
+  # The one team file that may hold subscription keys: the platform's, not a
+  # team's (aip-checks refuses a key anywhere else, and a writer App here).
+  research_slug = "research"
+
   # A model names its provider and offering; the offering says where the model
   # runs (catalogue/README.md). Each model carries its offering's hosting so
   # the team module deploys it on the right platform.

@@ -49,6 +49,10 @@ locals {
     azurerm_resource_group.platform[*].name,
     data.azurerm_resource_group.existing[*].name,
   ))
+  resource_group_id = one(concat(
+    azurerm_resource_group.platform[*].id,
+    data.azurerm_resource_group.existing[*].id,
+  ))
 }
 
 module "log_analytics" {
@@ -141,6 +145,19 @@ locals {
       }
     }
   }
+}
+
+# The Portal API mints research keys by creating API Management subscriptions
+# through ARM, which no built-in role grants without also granting the gateway's
+# policy. Platform layer, not tenant: the role is scoped to an instance this
+# state creates (R1.5).
+module "apim_subscription_role" {
+  source = "../modules/apim-subscription-role"
+
+  name                = local.names.apim_subscription_role
+  resource_group_id   = local.resource_group_id
+  api_management_id   = module.apim.id
+  principal_object_id = var.azure.identities.portal_api_principal_object_id
 }
 
 module "foundry" {

@@ -10,7 +10,7 @@
     { "name": "GlobalStandard", "capacity": 250, "tiers": ["research"] },
     {
       "name": "Standard",
-      "tiers": ["team"],
+      "tiers": ["team", "research"],
       "regions": ["uksouth"],
       "dataZone": "uk"
     }

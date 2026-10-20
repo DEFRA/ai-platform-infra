@@ -57,10 +57,12 @@ variable "teams" {
       serviceCode = string
     })
     deployments = list(object({
-      slug     = string
-      sku      = string
-      capacity = optional(number)
-      status   = string
+      slug = string
+      # Only the research file names a deployment: on its API the name is the public contract.
+      deploymentName = optional(string)
+      sku            = string
+      capacity       = optional(number)
+      status         = string
     }))
     gateway = object({
       credentialType     = string
@@ -70,7 +72,7 @@ variable "teams" {
         requestsPerMinute = number
       })
     })
-    oauth = object({
+    oauth = optional(object({
       federations = list(object({
         name    = string
         host    = string
@@ -89,7 +91,7 @@ variable "teams" {
         reason     = string
         reviewDate = string
       }))
-    })
+    }))
     operationId = string
     updatedBy   = string
     updatedAt   = string
@@ -110,18 +112,51 @@ variable "teams" {
     error_message = "Only active and pending-removal teams are applied."
   }
 
+  # Subscription keys are the research tier's alone, and the research tier is
+  # the one platform-owned team file (direction 14 October 2026); a team that
+  # edits its own file cannot acquire one. `aip-checks` names the file too.
   validation {
-    condition     = alltrue([for team in var.teams : team.gateway.credentialType == "oauth"])
-    error_message = "The team tier is OAuth only; subscription keys are the Research tier's."
+    condition = alltrue([
+      for key, team in var.teams : team.gateway.credentialType == "oauth" || (team.gateway.credentialType == "subscription-key" && key == local.research_slug)
+    ])
+    error_message = "The team tier is OAuth only; only the platform-owned ${local.research_slug} team uses a subscription key."
+  }
+
+  validation {
+    condition = alltrue([
+      for key, team in var.teams : (key == local.research_slug) == (team.gateway.credentialType == "subscription-key")
+    ])
+    error_message = "${local.research_slug} is the platform's team and uses a subscription key."
+  }
+
+  validation {
+    condition     = alltrue([for team in var.teams : (team.gateway.credentialType == "oauth") == (team.oauth != null)])
+    error_message = "A team that takes a token has an oauth block, and one that takes a subscription key has none."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for team in var.teams : [
+        for d in team.deployments : (d.deploymentName != null) == (team.gateway.credentialType == "subscription-key")
+      ]
+    ]))
+    error_message = "Only the research file names its deployments, and it names every one."
+  }
+
+  validation {
+    condition = alltrue([
+      for team in var.teams : length(distinct([for d in team.deployments : d.deploymentName if d.deploymentName != null])) == length([for d in team.deployments : d if d.deploymentName != null])
+    ])
+    error_message = "Deployment names are unique within a file."
   }
 
   validation {
     condition = alltrue([
       for team in var.teams : alltrue([
-        for slug in team.gateway.allowedDeployments : contains([for d in team.deployments : d.slug], slug)
+        for entry in team.gateway.allowedDeployments : contains([for d in team.deployments : team.gateway.credentialType == "subscription-key" ? d.deploymentName : d.slug], entry)
       ])
     ])
-    error_message = "allowedDeployments holds only the team's own deployments in Phase 1."
+    error_message = "allowedDeployments holds only the file's own deployments: catalogue slugs for a team, deployment names for research."
   }
 
   # The SKU and capacity words belong to the hosting platform (Foundry:
@@ -148,7 +183,7 @@ variable "teams" {
 
   validation {
     condition = alltrue([
-      for team in var.teams : length(team.oauth.federations) <= 20 && length(team.oauth.externalClients) <= 39
+      for team in var.teams : length(try(team.oauth.federations, [])) <= 20 && length(try(team.oauth.externalClients, [])) <= 39
     ])
     error_message = "At most 20 federations and 40 clients per team."
   }
@@ -156,7 +191,7 @@ variable "teams" {
   validation {
     condition = alltrue(flatten([
       for team in var.teams : [
-        for federation in team.oauth.federations : federation.host == "cdp"
+        for federation in try(team.oauth.federations, []) : federation.host == "cdp"
         ? federation.service != null && federation.issuer == null && federation.subject == null
         : federation.host == "azure" && federation.service == null && federation.issuer != null && federation.subject != null
       ]
@@ -166,7 +201,7 @@ variable "teams" {
 
   validation {
     condition = var.team_registrations || alltrue([
-      for team in var.teams : length(team.oauth.federations) == 0
+      for team in var.teams : length(try(team.oauth.federations, [])) == 0
     ])
     error_message = "Federations hang off a team's registration: without team registrations a team has none."
   }

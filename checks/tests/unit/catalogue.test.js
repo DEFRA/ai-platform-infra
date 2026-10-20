@@ -132,10 +132,27 @@ describe('checkCatalogue', () => {
 
 describe('skusForTier', () => {
   test('treats a SKU without tiers as Research only', () => {
-    const model = teamModel()
+    const model = {
+      skus: [
+        { name: 'GlobalStandard' },
+        { name: 'DataZoneStandard', tiers: ['team'] }
+      ]
+    }
 
     expect(skusForTier(model, 'research').map((s) => s.name)).toEqual([
       'GlobalStandard'
+    ])
+    expect(skusForTier(model, 'team').map((s) => s.name)).toEqual([
+      'DataZoneStandard'
+    ])
+  })
+
+  test('offers a SKU to every tier it names: Infradev research shares the team SKU', () => {
+    const model = teamModel()
+
+    expect(skusForTier(model, 'research').map((s) => s.name)).toEqual([
+      'GlobalStandard',
+      'DataZoneStandard'
     ])
     expect(skusForTier(model, 'team').map((s) => s.name)).toEqual([
       'DataZoneStandard'

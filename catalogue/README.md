@@ -23,7 +23,10 @@ environment's `CATALOGUE_REF` to `v0.2.0` only once the new backend is deployed 
 
 A model's `tiers` say who may use it. A `skus[]` entry without `tiers` is the hand-built Research
 deployment; the `team` tier needs a SKU with `tiers: ["team"]`, its `regions` and `dataZone`, and never a
-Global type (D03). `gpt-4-1-nano` and `gpt-5-nano` offer `DataZoneStandard` in Sweden Central to teams in
-Infradev, because neither is offered as Standard in UK South. `capacityPolicy.environments.{env}` overrides
-the limits per environment; its `quota`, in thousands of tokens per minute, caps the sum across every team
-in that environment, and an environment without one grants no team capacity.
+Global type (D03). A SKU that also lists `research` is the one the platform-owned `research` file deploys,
+under the model's `deploymentName`, which is the name callers send to the research API and so must match
+the file exactly (the checks reconcile the two both ways); `gpt-4-1-nano`, `gpt-4o` and `gpt-5-nano` offer
+theirs that way in Infradev. `gpt-4-1-nano` and `gpt-5-nano` offer `DataZoneStandard` in Sweden Central to
+teams in Infradev, because neither is offered as Standard in UK South. `capacityPolicy.environments.{env}`
+overrides the limits per environment; its `quota`, in thousands of tokens per minute, caps the sum across
+every team and the research file in that environment, and an environment without one grants no capacity.

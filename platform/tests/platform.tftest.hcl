@@ -14,11 +14,19 @@ mock_provider "azurerm" {
       subscription_id = "00000000-0000-0000-0000-000000000005"
     }
   }
+
+  mock_data "azurerm_resource_group" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000005/resourceGroups/SNDAIEAIPRGP1401"
+    }
+  }
 }
 
 mock_provider "azapi" {}
 
 mock_provider "azuread" {}
+
+mock_provider "time" {}
 
 variables {
   environment  = "infradev"

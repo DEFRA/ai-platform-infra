@@ -24,6 +24,12 @@ already holds Contributor there.
    permissions. Without it, OAuth teams (M4) cannot be created, and a tenants apply cannot permanently
    delete the registrations it removes, which then count towards the deploy identity's Entra limit for
    30 days.
+5. The platform apply creates a custom role definition and assigns it (`modules/apim-subscription-role`, for
+   the Portal API's research subscriptions). The constrained Role Based Access Control Administrator grant
+   cannot write a role definition or assign a role outside its delegable list, so the deploy identity needs
+   User Access Administrator (or Owner) on the platform's scope as well. Infradev's holds it on the whole
+   subscription (confirmed 20 October 2026); in any other environment set `grant_user_access_administrator`
+   to `true` (default `false`, so a holder is left alone) before its first platform apply.
 
 ## Run
 

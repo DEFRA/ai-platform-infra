@@ -11,9 +11,10 @@ output "path" {
 }
 
 output "named_values" {
-  value = {
-    clients       = azurerm_api_management_named_value.clients.name
-    access_window = azurerm_api_management_named_value.access_window.name
+  description = "The OAuth tier's named values; null for a key API, which has none."
+  value = local.key_tier ? null : {
+    clients       = azurerm_api_management_named_value.clients[0].name
+    access_window = azurerm_api_management_named_value.access_window[0].name
   }
 }
 

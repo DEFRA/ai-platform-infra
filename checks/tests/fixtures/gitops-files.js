@@ -40,6 +40,20 @@ function betaTeam(overrides = {}) {
 }
 
 /**
+ * The platform-owned research file from examples/: the one file that names a
+ * subscription key, and the deployment names its callers send.
+ *
+ * @param {object} [overrides] - Top-level fields to replace.
+ * @returns {object} A new team document.
+ */
+function researchTeam(overrides = {}) {
+  return {
+    ...example('ai-platform-tenants/environments/infradev/research.json'),
+    ...overrides
+  }
+}
+
+/**
  * The infradev pin from examples/.
  *
  * @param {object} [overrides] - Fields to replace.
@@ -105,5 +119,6 @@ export {
   betaTeam,
   pin,
   registryEntry,
+  researchTeam,
   teamPath
 }

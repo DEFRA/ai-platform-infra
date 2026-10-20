@@ -22,6 +22,7 @@ import {
   betaTeam,
   pin,
   registryEntry,
+  researchTeam,
   serialise,
   teamPath
 } from '../fixtures/gitops-files.js'
@@ -68,6 +69,70 @@ describe('validateTenantsChange', () => {
         operationId: alphaTeam().operationId
       })
     ).toEqual({ environment: 'infradev', problems: [] })
+  })
+
+  test('refuses the research file from a writer App: no portal path writes it', () => {
+    const head = submitTeam(researchTeam())
+
+    expect(
+      messages(
+        validateTenantsChange({
+          repoDir: repository.dir,
+          base,
+          head,
+          context,
+          author: WRITER,
+          operationId: researchTeam().operationId
+        })
+      )
+    ).toEqual([
+      'the research file is platform-owned: an engineer commits it, never a writer App'
+    ])
+  })
+
+  test('accepts the research file from an engineer in a break-glass pull request', () => {
+    const head = submitTeam(researchTeam())
+
+    expect(
+      validateTenantsChange({
+        repoDir: repository.dir,
+        base,
+        head,
+        context,
+        author: 'engineer',
+        labels: ['break-glass'],
+        approvers: ['reviewer-one', 'reviewer-two']
+      })
+    ).toEqual({ environment: 'infradev', problems: [] })
+  })
+
+  test('refuses a change that leaves the research file short of the catalogue', () => {
+    const team = researchTeam()
+    const head = submitTeam(
+      researchTeam({
+        deployments: team.deployments.slice(0, 2),
+        gateway: {
+          ...team.gateway,
+          allowedDeployments: ['gpt-4.1-nano', 'gpt-4o']
+        }
+      })
+    )
+
+    expect(
+      messages(
+        validateTenantsChange({
+          repoDir: repository.dir,
+          base,
+          head,
+          context,
+          author: 'engineer',
+          labels: ['break-glass'],
+          approvers: ['reviewer-one', 'reviewer-two']
+        })
+      )
+    ).toEqual([
+      'the catalogue offers gpt-5-nano to the research tier in infradev; add it to the research file as gpt-5-nano'
+    ])
   })
 
   test('refuses a change outside environments/', () => {
