@@ -633,6 +633,7 @@ function checkTeamFile(input) {
  * @param {object} input.document - The research file.
  * @param {string} input.environment - Environment name.
  * @param {Map<string, object>} input.models - Catalogue models by slug.
+ * @param {object} input.params - The environment's parameters.
  * @returns {Array<{file: string, message: string}>} Problems.
  */
 function checkResearchCoverage({
