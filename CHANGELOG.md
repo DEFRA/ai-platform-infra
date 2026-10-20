@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/DEFRA/ai-platform-infra/compare/v0.9.0...v0.9.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* require research coverage only for deployable models; add the Terraform quality plan ([#21](https://github.com/DEFRA/ai-platform-infra/issues/21)) ([13ad182](https://github.com/DEFRA/ai-platform-infra/commit/13ad1827081123859f40f3abbc429308dbcdba26))
+
 ## [0.9.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.8.0...v0.9.0) (2026-10-20)
 
 
