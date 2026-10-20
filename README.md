@@ -7,18 +7,18 @@ in GitHub Environment variables.
 
 Design and plan: `ai-platform-discovery-docs` (IaC baseline plan, designs B, C and D).
 
-| Path                      | What                                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------------------ |
-| [`platform/`](platform)   | Root module for the platform state of one environment (Phase 1: the public minimal platform)           |
-| [`tenants/`](tenants)     | Root module for the tenants state: one `team` module per team file                                     |
-| [`bootstrap/`](bootstrap) | One-time per subscription: state account, deploy identity federation, missing roles                    |
-| [`names/`](names)         | Provider-free root that prints every name for an environment                                           |
-| [`modules/`](modules)     | `naming` and the platform and team modules ([guide](docs/modules.md))                                  |
-| [`schemas/`](schemas)     | `team`, `pin`, `registry` and `environment` JSON Schemas                                               |
-| [`checks/`](checks)       | `aip-checks`: validate, plan-guard, run-report (Node.js 24)                                            |
-| [`catalogue/`](catalogue) | Model providers and models                                                                             |
-| [`examples/`](examples)   | Placeholder files laid out by repository; test fixtures for the checks and the Portal API              |
-| [`docs/`](docs)           | [GitOps contract](docs/gitops-contract.md), [bootstrap](docs/bootstrap.md), [modules](docs/modules.md) |
+| Path                      | What                                                                                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`platform/`](platform)   | Root module for the platform state of one environment (Phase 1: the public minimal platform)                                                                     |
+| [`tenants/`](tenants)     | Root module for the tenants state: one `team` module per team file                                                                                               |
+| [`bootstrap/`](bootstrap) | One-time per subscription: state account, deploy identity federation, missing roles                                                                              |
+| [`names/`](names)         | Provider-free root that prints every name for an environment                                                                                                     |
+| [`modules/`](modules)     | `naming` and the platform and team modules ([guide](docs/modules.md))                                                                                            |
+| [`schemas/`](schemas)     | `team`, `pin`, `registry` and `environment` JSON Schemas                                                                                                         |
+| [`checks/`](checks)       | `aip-checks`: validate, plan-guard, run-report (Node.js 24)                                                                                                      |
+| [`catalogue/`](catalogue) | Model providers and models                                                                                                                                       |
+| [`examples/`](examples)   | Placeholder files laid out by repository; test fixtures for the checks and the Portal API                                                                        |
+| [`docs/`](docs)           | [GitOps contract](docs/gitops-contract.md), [bootstrap](docs/bootstrap.md), [modules](docs/modules.md), [Terraform quality plan](docs/terraform-quality-plan.md) |
 
 ## Versions
 

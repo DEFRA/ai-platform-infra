@@ -699,6 +699,24 @@ describe('the platform-owned research file', () => {
       ])
     })
 
+    test('does not ask for a model the environment has no Foundry region to deploy', () => {
+      const team = researchTeam()
+      const document = renamed(team.deployments.slice(1, 2), ['gpt-4o'])
+      const params = environmentParams({
+        azure: { foundry: { regions: ['uksouth'] } }
+      })
+
+      const problems = checkEnvironmentTeams({
+        teams: [{ path: teamPath(document), document }],
+        environment: 'infradev',
+        models,
+        params,
+        entry: registryEntry()
+      }).map((problem) => problem.message)
+
+      expect(problems).toEqual([])
+    })
+
     test("adds its capacity to every team's against the model quota", () => {
       const teams = [0, 1].map((index) =>
         withDeployment(
