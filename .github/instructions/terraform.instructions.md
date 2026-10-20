@@ -10,11 +10,11 @@ References: [HashiCorp style guide](https://developer.hashicorp.com/terraform/la
 ## Practices (flag a breach in review)
 
 - **Layout and naming.** Standard files (`terraform.tf`, `variables.tf`, `main.tf`, `outputs.tf`), one concern per small module, `snake_case`, a single resource of a kind is `this`, no provider blocks in modules. Names come from `modules/naming`, never literals.
-- **Inputs and outputs.** Every variable has a type, description and, where it can be wrong, a `validation`. No environment-specific defaults. Outputs are minimal, described, and never a secret or sensitive value.
+- **Inputs and outputs.** Every variable has a type, description and, where it can be wrong, a `validation`. No environment-specific defaults. Outputs are minimal and described; a sensitive value may pass between modules but is never a root output.
 - **Versions.** `required_version` set; providers exact-pinned in roots with a committed lock file covering linux, darwin and windows; modules give a minimum range.
 - **Safe change.** `for_each` over maps with stable keys; `count` only as an on/off switch. Use a `moved` block for any address change and say what a plan will show. `lifecycle` exceptions (`ignore_changes`, `prevent_destroy`) carry a one-line reason. No `-target`, no local-exec, no apply from a PR.
 - **Secrets.** None in code, variables, outputs or state beyond what the provider forces. Prefer identities and RBAC over keys.
-- **Clean tools.** `terraform fmt`, `validate`, tflint and checkov pass; a new checkov skip needs a reason.
+- **Clean tools.** `terraform fmt`, `validate` and tflint pass. Checkov reports but does not block until its findings are triaged ([quality plan](../../docs/terraform-quality-plan.md)); a new checkov skip still needs a reason.
 
 ## Testing: every piece of HCL is automated and tested
 
