@@ -592,7 +592,7 @@ describe('the platform-owned research file', () => {
     ])
   })
 
-  test('is an engineer\'s: a writer App never writes it', () => {
+  test("is an engineer's: a writer App never writes it", () => {
     expect(check(researchTeam(), { writer: true })).toEqual([
       'the research file is platform-owned: an engineer commits it, never a writer App'
     ])
@@ -606,7 +606,7 @@ describe('the platform-owned research file', () => {
     )
 
     expect(check(document)).toEqual([
-      'deployment gpt-4-1-nano deploymentName gpt-4-1-nano must be gpt-4.1-nano, the catalogue\'s'
+      "deployment gpt-4-1-nano deploymentName gpt-4-1-nano must be gpt-4.1-nano, the catalogue's"
     ])
   })
 
@@ -699,7 +699,7 @@ describe('the platform-owned research file', () => {
       ])
     })
 
-    test('adds its capacity to every team\'s against the model quota', () => {
+    test("adds its capacity to every team's against the model quota", () => {
       const teams = [0, 1].map((index) =>
         withDeployment(
           { capacity: 5 },

@@ -55,7 +55,8 @@ describe('Terraform owns no API Management subscription', () => {
     expect(
       sources.filter(
         ({ name, source }) =>
-          name.startsWith('tenants/') && source.includes('apim-subscription-role')
+          name.startsWith('tenants/') &&
+          source.includes('apim-subscription-role')
       )
     ).toEqual([])
   })

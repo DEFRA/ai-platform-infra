@@ -160,7 +160,10 @@ function checkDeployments(path, document, previous, context) {
       problems.push(problem(path, `${label} sku ${deployment.sku} not allowed`))
     } else if (tier === 'research' && GLOBAL_SKU.test(sku.name)) {
       problems.push(
-        problem(path, `${label} sku ${sku.name} is a Global type, excluded by D03`)
+        problem(
+          path,
+          `${label} sku ${sku.name} is a Global type, excluded by D03`
+        )
       )
     } else if (!regionFor(sku, params)) {
       problems.push(
