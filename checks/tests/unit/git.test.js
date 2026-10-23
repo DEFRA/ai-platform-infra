@@ -93,4 +93,45 @@ describe('commitsWithTrailers', () => {
       }
     ])
   })
+
+  test('still reads the operation after text GitHub appends to a hand-merged pull request', () => {
+    repository.write('environments/infradev/alpha.json', '{"a":3}\n')
+    const merged = repository.commit(
+      'chore(infradev): write team-aice-1 (#25)\n\n' +
+        'Submitted by the AI Platform for operation `6adb1d7860b0b581ed094dfa`.\n\n' +
+        'Operation-Id: 6adb1d7860b0b581ed094dfa\n' +
+        'Requested-By: entra:ee43727f-77db-4154-81b6-f65c9dd900d4\n\n' +
+        'Co-authored-by: ai-platform-orchestrator[bot] <333351233+ai-platform-orchestrator[bot]@users.noreply.github.com>'
+    )
+
+    expect(
+      commitsWithTrailers(repository.dir, base, merged, 'environments/infradev')
+    ).toEqual([
+      {
+        sha: merged,
+        operationIds: ['6adb1d7860b0b581ed094dfa'],
+        traceparent: null
+      }
+    ])
+  })
+
+  test('lists each operation once and ignores the subject line', () => {
+    repository.write('environments/infradev/alpha.json', '{"a":4}\n')
+    const head = repository.commit(
+      'Operation-Id: op-subject\n\nOperation-Id: op-00000003\nOperation-Id: op-00000003'
+    )
+
+    expect(
+      commitsWithTrailers(repository.dir, base, head, 'environments/infradev')
+    ).toEqual([{ sha: head, operationIds: ['op-00000003'], traceparent: null }])
+  })
+
+  test('has no operation for a commit that names none', () => {
+    repository.write('environments/infradev/alpha.json', '{"a":5}\n')
+    const head = repository.commit('chore: manual edit')
+
+    expect(
+      commitsWithTrailers(repository.dir, base, head, 'environments/infradev')
+    ).toEqual([{ sha: head, operationIds: [], traceparent: null }])
+  })
 })
