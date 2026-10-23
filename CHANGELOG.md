@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/DEFRA/ai-platform-infra/compare/v0.9.1...v0.9.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* read Operation-Id from the whole commit body in the run report ([#29](https://github.com/DEFRA/ai-platform-infra/issues/29)) ([614a63a](https://github.com/DEFRA/ai-platform-infra/commit/614a63afb5c3ed3dec4312f5222a23a3d7f59e55))
+
 ## [0.9.1](https://github.com/DEFRA/ai-platform-infra/compare/v0.9.0...v0.9.1) (2026-10-20)
 
 
