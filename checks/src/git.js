@@ -95,9 +95,22 @@ function lastCommitFor(cwd, ref, path) {
   return sha || null
 }
 
+// Read from every body line, not git's trailer block: GitHub appends text
+// after the trailers when a person merges a pull request by hand (a
+// `Co-authored-by:` line, the pull request body), and git then no longer
+// treats `Operation-Id:` as a trailer.
+const OPERATION_ID_LINE = /^Operation-Id:[ \t]*(\S+)[ \t]*$/gim
+const TRACEPARENT_LINE = /^Traceparent:[ \t]*(\S+)[ \t]*$/im
+
+function operationIdsIn(body) {
+  return [
+    ...new Set([...body.matchAll(OPERATION_ID_LINE)].map((match) => match[1]))
+  ]
+}
+
 /**
  * Commits between two commits that touched a path, with their GitOps
- * trailers.
+ * trailers, read from anywhere in the message body (not the subject).
  *
  * @param {string} cwd - Repository checkout.
  * @param {string | null} base - Last applied commit; null for the whole
@@ -108,11 +121,7 @@ function lastCommitFor(cwd, ref, path) {
  *   traceparent: string | null}>} Newest first.
  */
 function commitsWithTrailers(cwd, base, head, path) {
-  const format = [
-    '%H',
-    '%(trailers:key=Operation-Id,valueonly,separator=%x2C)',
-    '%(trailers:key=Traceparent,valueonly,separator=%x2C)'
-  ].join(FIELD)
+  const format = ['%H', '%b'].join(FIELD)
   const range = base ? `${base}..${head}` : head
   // Unbounded on purpose: the run report must list every operation since the
   // last apply, and the range already bounds the walk.
@@ -129,15 +138,12 @@ function commitsWithTrailers(cwd, base, head, path) {
     .map((record) => record.trim())
     .filter(Boolean)
     .map((record) => {
-      const [sha, operations, traceparent] = record.split(FIELD)
+      const [sha, body = ''] = record.split(FIELD)
 
       return {
         sha,
-        operationIds: operations
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean),
-        traceparent: traceparent?.trim() || null
+        operationIds: operationIdsIn(body),
+        traceparent: TRACEPARENT_LINE.exec(body)?.[1] ?? null
       }
     })
 }
