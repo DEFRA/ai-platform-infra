@@ -579,6 +579,32 @@ describe('the event schema', () => {
       expectRejected('event', without(event, 'commitSha'))
     })
 
+    // Finding F4 (Copilot review of PR 31): an event with no operation may not
+    // name half a target.
+    test.each([
+      ['break-glass', 'event-break-glass'],
+      ['an apply with no operation', 'event-external-apply']
+    ])(
+      '%s has a team and a path together or neither, never one of them',
+      (_name, file) => {
+        const event = example(file)
+
+        expect(validators.event(event)).toEqual([])
+        expectRejected('event', { ...event, team: 'alpha' })
+        expectRejected('event', {
+          ...event,
+          path: 'environments/infradev/alpha.json'
+        })
+        expect(
+          validators.event({
+            ...event,
+            team: 'alpha',
+            path: 'environments/infradev/alpha.json'
+          })
+        ).toEqual([])
+      }
+    )
+
     test('a pull request URL belongs to break-glass alone', () => {
       expectRejected('event', {
         ...example('event-committed'),
@@ -741,6 +767,22 @@ describe('the command schema', () => {
       expectRejected('command', { ...command, document: '' })
     })
 
+    // Finding F3 (Copilot review of PR 31): a revert restores a document, so
+    // it carries one, in a submit and in a reconcile from requested.
+    test.each([
+      ['a submit', 'command-submit-revert-team'],
+      ['a reconcile from requested', 'command-reconcile-requested']
+    ])(
+      '%s of a revert carries the document, which is not empty',
+      (_name, file) => {
+        const command = { ...example(file), action: 'revert' }
+
+        expect(validators.command(command)).toEqual([])
+        expectRejected('command', without(command, 'document'))
+        expectRejected('command', { ...command, document: '' })
+      }
+    )
+
     test('a remove carries no document', () => {
       const command = example('command-submit-remove-team')
 
@@ -822,6 +864,42 @@ describe('the command schema', () => {
           })
         )
       ).toEqual([])
+    })
+
+    // Finding F2 (Copilot review of PR 31): the target is all there or all
+    // absent, so a command for an operation can always be grouped.
+    test.each([
+      ['an operation with no team', { operationId: 'op-7f3c9a1e' }],
+      [
+        'an operation with no path',
+        { operationId: 'op-7f3c9a1e', team: 'alpha' }
+      ],
+      [
+        'an operation with neither',
+        { operationId: 'op-7f3c9a1e', team: null, path: null }
+      ],
+      ['a team with no operation', { team: 'alpha' }],
+      [
+        'a path with no operation',
+        { path: 'environments/infradev/alpha.json' }
+      ],
+      [
+        'a team and a path with no operation',
+        { team: 'alpha', path: 'environments/infradev/alpha.json' }
+      ]
+    ])('refuses %s', (_name, overrides) => {
+      expectRejected('command', example('command-apply', overrides))
+    })
+
+    test('refuses a half target when the operation is named too', () => {
+      expectRejected(
+        'command',
+        example('command-apply', {
+          operationId: 'op-7f3c9a1e',
+          team: 'alpha',
+          path: null
+        })
+      )
     })
 
     test.each([

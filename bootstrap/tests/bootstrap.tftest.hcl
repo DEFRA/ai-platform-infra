@@ -315,8 +315,18 @@ run "audiences_the_events_token_to_its_own_registration" {
   }
 
   assert {
-    condition     = output.events_identity.audience == module.events_audience.identifier_uri && output.events_identity.client_id == azurerm_user_assigned_identity.events.client_id && output.events_identity.principal_id == azurerm_user_assigned_identity.events.principal_id
-    error_message = "the output carries what CDP and the Environments need: the audience, the client ID and the object ID to trust as subject"
+    condition     = output.events_identity.audience == module.events_audience.client_id && output.events_identity.audience_uri == module.events_audience.identifier_uri
+    error_message = "the audience is the registration's client ID, which is the aud claim of the v2 token CDP checks; the identifier URI is kept apart as the token request's resource"
+  }
+
+  assert {
+    condition     = output.events_identity.audience != output.events_identity.audience_uri && !startswith(output.events_identity.audience, "api://")
+    error_message = "a v2 access token carries the client ID as aud, never api://{client ID}, so the value handed to CDP must not be the URI"
+  }
+
+  assert {
+    condition     = output.events_identity.client_id == azurerm_user_assigned_identity.events.client_id && output.events_identity.principal_id == azurerm_user_assigned_identity.events.principal_id
+    error_message = "the output carries what CDP and the Environments need: the client ID and the object ID to trust as subject"
   }
 
   assert {

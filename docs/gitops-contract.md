@@ -225,13 +225,16 @@ are the contract, JSON Schema 2020-12 with `additionalProperties: false`:
   `npm run contracts:check` fails any difference.
 - **Commands.** `type` is `submit`, `apply` or `reconcile`. `commandId` is a UUIDv7 made with the operation's
   outbox entry and kept when it is republished, so a new send is delivered and only a republish collapses.
-  A submit, and a reconcile from `requested`, carry `action`, `document` and, for a team file,
-  `expectedRevision`, or for a pin (team `platform` or `tenants`), `expectedBase`, which is null for an
-  environment's first pin. The worker passes them as the `submit` inputs above.
+  A submit, and a reconcile from `requested`, carry `action` and, for a `write` or a `revert`, the whole
+  `document`; and `expectedRevision` for a team file, or `expectedBase` for a pin (team `platform` or
+  `tenants`), which is null for an environment's first pin. The worker passes them as the `submit` inputs
+  above. The target is whole: `operationId`, `team` and `path` are all present or, for an `apply` that is for
+  no operation, all null.
 - **Events.** `status` is `requested`, `checks-failed`, `committed`, `deploying`, `deployed`, `deploy-failed`,
   `paused` or `resumed`; `source` is `submit`, `apply`, `pause` or `reconciler`. `eventId` is
   `{operationId or commitSha or environment}:{status}:{runId}:{runAttempt}`, so a repeat collapses.
-  `operationId`, `team` and `path` are null for `break-glass`, `pause` and a run with no operation.
+  `operationId` is null for `break-glass`, `pause` and a run with no operation; `team` and `path` are null
+  for `pause`, and travel together otherwise: both, or neither.
   `failureReason {code, message, retryable}` comes with `checks-failed` and `deploy-failed`; `retryable` is
   true exactly for `stale-revision`, `paused` and `commit-conflict` on `checks-failed`, and `paused` on
   `deploy-failed`. `deployed` carries `appliedSha` and `resources[]`; `deploy-failed` carries `failingTeams[]`
