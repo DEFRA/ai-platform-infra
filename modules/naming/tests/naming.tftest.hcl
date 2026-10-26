@@ -62,6 +62,33 @@ run "uses_logical_labels_where_ccoe_has_no_code" {
     condition     = output.names.apim_subscription_role == "aip-infradev-apim-subscription-manager"
     error_message = "the custom role carries the environment, because role names are unique per tenant"
   }
+
+  assert {
+    condition     = output.names.events_identity == "id-aip-events-infradev" && output.names.events_audience_app == "app-aip-events-infradev"
+    error_message = "the events identity and its audience registration are id-aip-events-{env} and app-aip-events-{env}"
+  }
+}
+
+run "names_the_events_identity_for_each_environment" {
+  command = plan
+
+  variables {
+    environment = "abcdefghijklmnop"
+  }
+
+  assert {
+    condition     = output.names.events_identity == "id-aip-events-abcdefghijklmnop" && output.names.events_audience_app == "app-aip-events-abcdefghijklmnop"
+    error_message = "the events names follow the environment, up to the 16-character maximum"
+  }
+}
+
+run "lists_the_managed_identity_among_the_ccoe_gaps" {
+  command = plan
+
+  assert {
+    condition     = contains(output.ccoe_gaps, "User-assigned managed identity")
+    error_message = "the events identity uses a logical label, so the gap is raised with CCoE"
+  }
 }
 
 run "rejects_an_unknown_sub_type" {

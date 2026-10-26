@@ -236,6 +236,64 @@ resource "azuread_application_federated_identity_credential" "deploy" {
   audiences      = ["api://AzureADTokenExchange"]
 }
 
+# The events identity: the workflows publish status events to the backend's
+# SQS queue as id-aip-events-{env} (design C #identities). It holds no Azure
+# role: it exists to sign in, then presents a token for its audience
+# registration, which CDP's IAM role trusts for sqs:SendMessage on the events
+# queue alone, by this identity's object ID. Its credentials trust the {env}
+# Environment (the apply) and the {env}-events Environment (submit and
+# pause.yml, which create no Deployment in {env}) of the two state
+# repositories, and nothing else; a third repository is refused by the
+# oidc_subject_prefixes validation.
+locals {
+  events_environments = {
+    environment = local.environment
+    events      = "${local.environment}-events"
+  }
+
+  events_credentials = {
+    for pair in setproduct(keys(var.oidc_subject_prefixes), keys(local.events_environments)) :
+    "${pair[0]}/${pair[1]}" => {
+      repository  = pair[0]
+      environment = local.events_environments[pair[1]]
+    }
+  }
+}
+
+resource "azurerm_user_assigned_identity" "events" {
+  name = local.names.events_identity
+  # Refers to the group by resource when bootstrap creates it, so the
+  # identity waits for it; an existing group is only named.
+  resource_group_name = coalesce(one(azurerm_resource_group.state[*].name), local.names.resource_group_state)
+  location            = local.location
+  tags                = local.tags
+
+  lifecycle {
+    # Azure Policy copies the resource group's ServiceCode tag onto its resources.
+    ignore_changes = [tags["ServiceCode"]]
+  }
+}
+
+resource "azurerm_federated_identity_credential" "events" {
+  for_each = local.events_credentials
+
+  name                      = "${each.value.repository}-${each.value.environment}"
+  user_assigned_identity_id = azurerm_user_assigned_identity.events.id
+  issuer                    = "https://token.actions.githubusercontent.com"
+  subject                   = "${var.oidc_subject_prefixes[each.value.repository]}:environment:${each.value.environment}"
+  audience                  = ["api://AzureADTokenExchange"]
+}
+
+# The audience: a registration with no permissions and no credential, owned by
+# the deploy identity so the platform apply can manage it afterwards.
+module "events_audience" {
+  source = "../modules/entra-api-audience"
+
+  display_name     = local.names.events_audience_app
+  owner_object_ids = [data.azuread_service_principal.deploy.object_id]
+  environment      = local.environment
+}
+
 data "azuread_application_published_app_ids" "well_known" {}
 
 data "azuread_service_principal" "graph" {

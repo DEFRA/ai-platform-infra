@@ -1,8 +1,43 @@
-mock_provider "azurerm" {}
+mock_provider "azurerm" {
+  mock_resource "azurerm_storage_account" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/example/providers/Microsoft.Storage/storageAccounts/example"
+    }
+  }
+
+  mock_resource "azurerm_storage_container" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/example/providers/Microsoft.Storage/storageAccounts/example/blobServices/default/containers/tfstate"
+    }
+  }
+
+  mock_resource "azurerm_user_assigned_identity" {
+    defaults = {
+      id           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/example/providers/Microsoft.ManagedIdentity/userAssignedIdentities/example"
+      client_id    = "00000000-0000-0000-0000-0000000000e1"
+      principal_id = "00000000-0000-0000-0000-0000000000e2"
+      tenant_id    = "00000000-0000-0000-0000-0000000000e3"
+    }
+  }
+}
 mock_provider "azuread" {
   mock_data "azuread_application" {
     defaults = {
       id = "/applications/00000000-0000-0000-0000-000000000001"
+    }
+  }
+
+  mock_data "azuread_service_principal" {
+    defaults = {
+      object_id = "00000000-0000-0000-0000-000000000002"
+    }
+  }
+
+  mock_resource "azuread_application" {
+    defaults = {
+      id        = "/applications/00000000-0000-0000-0000-0000000000a2"
+      client_id = "00000000-0000-0000-0000-0000000000a1"
+      object_id = "00000000-0000-0000-0000-0000000000a2"
     }
   }
 }
@@ -185,5 +220,147 @@ run "locks_the_vaults_and_workspace_on_the_second_pass" {
   assert {
     condition     = data.azurerm_key_vault.platform["key_vault_tenants"].name == "sndaipappkvt1402" && data.azurerm_log_analytics_workspace.platform[0].name == "SNDAIPAPPLW1401"
     error_message = "the locked resources are looked up by their CCoE names"
+  }
+}
+
+# The events identity (design C #identities, async GitOps operations): the
+# workflows publish status events as id-aip-events-{env}, which holds no Azure
+# role and trusts only the two state repositories' Environments.
+run "creates_the_events_identity_in_the_state_resource_group" {
+  command = plan
+
+  assert {
+    condition     = azurerm_user_assigned_identity.events.name == "id-aip-events-infradev"
+    error_message = "the events identity takes the logical label id-aip-events-{env}"
+  }
+
+  assert {
+    condition     = azurerm_user_assigned_identity.events.resource_group_name == "SNDAIPINFRGP1402" && azurerm_user_assigned_identity.events.location == "uksouth"
+    error_message = "the identity sits beside the state account, in the state resource group"
+  }
+
+  assert {
+    condition     = azurerm_user_assigned_identity.events.tags == azurerm_storage_account.state.tags
+    error_message = "the identity carries the bootstrap's tags"
+  }
+}
+
+run "federates_the_events_identity_to_exactly_four_subjects" {
+  command = apply
+
+  assert {
+    condition = toset(output.events_federated_subjects) == toset([
+      "repo:DEFRA@1/ai-platform-tenants@2:environment:infradev",
+      "repo:DEFRA@1/ai-platform-tenants@2:environment:infradev-events",
+      "repo:DEFRA@1/ai-platform-deployments@3:environment:infradev",
+      "repo:DEFRA@1/ai-platform-deployments@3:environment:infradev-events",
+    ])
+    error_message = "the events identity trusts the {env} and {env}-events Environments of both state repositories, and nothing else"
+  }
+
+  assert {
+    condition     = length(output.events_federated_subjects) == 4 && length(azurerm_federated_identity_credential.events) == 4
+    error_message = "two repositories times two Environments: four credentials, no more"
+  }
+
+  assert {
+    condition = alltrue([
+      for credential in azurerm_federated_identity_credential.events :
+      credential.issuer == "https://token.actions.githubusercontent.com" && toset(credential.audience) == toset(["api://AzureADTokenExchange"]) && credential.user_assigned_identity_id == azurerm_user_assigned_identity.events.id
+    ])
+    error_message = "every credential trusts GitHub's issuer for the Azure token exchange, on the events identity alone"
+  }
+
+  assert {
+    condition = toset([for credential in azurerm_federated_identity_credential.events : credential.name]) == toset([
+      "ai-platform-tenants-infradev",
+      "ai-platform-tenants-infradev-events",
+      "ai-platform-deployments-infradev",
+      "ai-platform-deployments-infradev-events",
+    ])
+    error_message = "credential names are derived from the repository and Environment, so a repeat apply changes nothing"
+  }
+}
+
+run "gives_the_events_identity_no_azure_role" {
+  command = apply
+
+  variables {
+    grant_user_access_administrator = true
+  }
+
+  assert {
+    condition = alltrue(concat(
+      [for assignment in azurerm_role_assignment.operator_state : assignment.principal_id != azurerm_user_assigned_identity.events.principal_id],
+      [for assignment in azurerm_role_assignment.deploy_contributor : assignment.principal_id != azurerm_user_assigned_identity.events.principal_id],
+      [for assignment in azurerm_role_assignment.deploy_user_access_administrator : assignment.principal_id != azurerm_user_assigned_identity.events.principal_id],
+      [for assignment in azurerm_role_assignment.deploy_rbac_administrator : assignment.principal_id != azurerm_user_assigned_identity.events.principal_id],
+      [azurerm_role_assignment.deploy_state.principal_id != azurerm_user_assigned_identity.events.principal_id],
+    ))
+    error_message = "no role assignment of the bootstrap names the events identity: it signs in and nothing more"
+  }
+
+  assert {
+    condition     = azurerm_user_assigned_identity.events.principal_id != data.azuread_service_principal.deploy.object_id
+    error_message = "the events identity is not the deploy identity"
+  }
+}
+
+run "audiences_the_events_token_to_its_own_registration" {
+  command = apply
+
+  assert {
+    condition     = module.events_audience.identifier_uri == "api://${module.events_audience.client_id}"
+    error_message = "the token audience is the registration's own identifier URI"
+  }
+
+  assert {
+    condition     = output.events_identity.audience == module.events_audience.identifier_uri && output.events_identity.client_id == azurerm_user_assigned_identity.events.client_id && output.events_identity.principal_id == azurerm_user_assigned_identity.events.principal_id
+    error_message = "the output carries what CDP and the Environments need: the audience, the client ID and the object ID to trust as subject"
+  }
+
+  assert {
+    condition     = output.events_identity.name == "id-aip-events-infradev" && output.events_identity.audience_name == "app-aip-events-infradev"
+    error_message = "the outputs name both the identity and its audience registration"
+  }
+}
+
+run "refuses_a_third_repository_for_the_events_identity" {
+  command = plan
+
+  variables {
+    oidc_subject_prefixes = {
+      "ai-platform-tenants"     = "repo:DEFRA@1/ai-platform-tenants@2"
+      "ai-platform-deployments" = "repo:DEFRA@1/ai-platform-deployments@3"
+      "ai-platform-frontend"    = "repo:DEFRA@1/ai-platform-frontend@4"
+    }
+  }
+
+  expect_failures = [var.oidc_subject_prefixes]
+}
+
+run "puts_the_events_identity_in_an_existing_resource_group" {
+  command = plan
+
+  variables {
+    params_file = "tests/params-existing-resource-group.tfvars.json"
+  }
+
+  assert {
+    condition     = length(azurerm_resource_group.state) == 0 && azurerm_user_assigned_identity.events.resource_group_name == "SNDAIEAIPRGP1401"
+    error_message = "with a resource group made in advance the identity goes into it and bootstrap creates none"
+  }
+}
+
+run "names_the_events_identity_for_the_longest_environment" {
+  command = apply
+
+  variables {
+    params_file = "tests/params-longest-environment.tfvars.json"
+  }
+
+  assert {
+    condition     = azurerm_user_assigned_identity.events.name == "id-aip-events-abcdefghijklmnop" && contains(output.events_federated_subjects, "repo:DEFRA@1/ai-platform-deployments@3:environment:abcdefghijklmnop-events")
+    error_message = "a 16-character environment still gives valid names and subjects"
   }
 }

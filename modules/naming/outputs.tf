@@ -57,6 +57,7 @@ output "ccoe_gaps" {
     "Foundry deployment",
     "API Management API, named value and policy fragment",
     "Entra application registration",
+    "User-assigned managed identity",
     "Custom role definition",
   ]
 }
