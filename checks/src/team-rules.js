@@ -9,6 +9,9 @@ const GRANTABLE = new Set(['available', 'eligible'])
 const GLOBAL_SKU = /^Global/
 // The one file that may name subscription-key: an engineer's, not a team's.
 const RESEARCH_SLUG = 'research'
+// A GitOps command or event names a pin by these in its `team`, so a team file
+// cannot take either as its slug (aip.gitops.command/1).
+const RESERVED_SLUGS = new Set(['platform', 'tenants'])
 const SUBSCRIPTION_KEY = 'subscription-key'
 // Every team's dedicated deployments share the environment's Foundry account
 // in a region, and Azure allows 32 model deployments per Foundry resource
@@ -564,6 +567,16 @@ function checkTeamFile(input) {
 
   if (document.team.slug !== location.slug) {
     problems.push(problem(path, 'file name must equal team.slug'))
+  }
+
+  if (RESERVED_SLUGS.has(document.team.slug)) {
+    problems.push(
+      problem(
+        path,
+        `${document.team.slug} is reserved: a GitOps message names a pin by ` +
+          'it, never a team'
+      )
+    )
   }
 
   if (document.environment !== location.environment) {
