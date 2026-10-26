@@ -54,7 +54,7 @@ portal path writes it. [`examples/`](../examples) holds a fixture.
 Rules beyond the schema, enforced by `validate`:
 
 - File name equals `team.slug`; folder equals `environment`, which must be a registry entry.
-- `revision` increases on every write; `operationId` equals the `op/{operationId}` branch.
+- `revision` increases on every write; `operationId` equals the operation the run was dispatched for.
 - Each deployment's catalogue model has tier `team`, lists the environment, is `available` or
   `eligible` (a `deprecated` model keeps existing grants only) and offers the SKU for the `team` tier
   in a region the environment's Foundry accounts cover. The SKU and `capacity` words belong to the
@@ -109,66 +109,69 @@ to `sha` in `ai-platform-infra`. `previousRelease` equals the release it replace
 
 ## Submit
 
-The Portal API, and the release workflow for `autoPin` environments, dispatch `submit.yml` on `main`
-of the state repository with `X-GitHub-Api-Version: 2026-03-10`, which returns the run ID. Inputs:
+Workflows `v2`. The GitOps worker, which the Portal API commands through a queue, and the release workflow
+for `autoPin` environments, dispatch `submit.yml` on `main` of the state repository with
+`X-GitHub-Api-Version: 2026-03-10`, which returns the run ID. Inputs:
 
-| Input               | Value                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `action`            | `write` (create or replace the file), `remove` (delete it) or `abandon`                                      |
-| `environment`       | Registry entry name                                                                                          |
-| `path`              | `environments/{env}/{slug}.json` or `environments/{env}/platform.json`                                       |
-| `document`          | The whole canonical document for `write`; empty otherwise                                                    |
-| `operation_id`      | `^[a-z0-9][a-z0-9-]{7,63}$`; also the branch name `op/{operation_id}`                                        |
-| `expected_revision` | The `revision` (team) the caller last read, `0` for a new file; ignored for pins                             |
-| `requested_by`      | `entra:{object ID}` of the signed-in person; replaced by `github:{user ID}` when a person dispatches the run |
-| `trace_parent`      | Optional W3C `traceparent`, carried into the commit and the run report                                       |
+| Input               | Value                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `action`            | `write` (create or replace the file), `remove` (delete it) or `revert` (undo an earlier operation; a write recorded as its own operation)                                            |
+| `environment`       | Registry entry name                                                                                                                                                                  |
+| `path`              | `environments/{env}/{slug}.json` or `environments/{env}/platform.json`                                                                                                               |
+| `document`          | The whole canonical document for `write`; empty otherwise                                                                                                                            |
+| `operation_id`      | Optional, `^[a-z0-9][a-z0-9-]{7,63}$`. The run name carries it as `({operation_id})`, which is how the worker finds the run. A run started by hand generates its own and refuses one |
+| `expected_revision` | The team file's `revision` the caller last read, `0` for a new file; team files only                                                                                                 |
+| `expected_base`     | The pin file's blob SHA on `main` the caller last read; pins only. Every write, an admin's too, names its base                                                                       |
+| `requested_by`      | `entra:{object ID}` of the signed-in person; replaced by `github:{user ID}` when a person dispatches the run                                                                         |
+| `trace_parent`      | Optional W3C `traceparent`, carried into the commit and the events                                                                                                                   |
+| `cdp_request_id`    | Optional CDP request ID, carried into the events                                                                                                                                     |
 
 `remove` exists for the D14 revert of a newly added team file and for deleting a team; it is a
 `write` of no file.
 
-`submit` then:
+`submit` runs in the `{env}-events` Environment and commits directly to `main` as the App: no branch, no
+pull request. It then:
 
-1. Is idempotent per operation: if `op/{operation_id}` already has a pull request, open or merged, it
-   reports it (`existing`) and stops before validating, so a retry never fails on a `revision` that
-   `main` has since moved past.
-2. Validates the inputs and the document at the environment's pinned infra release, against `main`
+1. Checks the base. A `revision` or blob SHA that no longer matches `main` ends `stale-revision`, and an
+   exempt App's write while the environment is paused ends `paused`. Both are retryable and commit nothing.
+2. Validates the inputs and the whole document at the environment's pinned infra release, against `main`
    with the change staged locally. Nothing is written to Git if it fails (`checks-failed`).
-3. Refuses a second open `op/*` pull request for the same path (`file-locked`) and a `revision` that
-   does not match `main` (`revision-conflict`).
-4. Commits as the App with GraphQL `createCommitOnBranch` (`expectedHeadOid`) on `op/{operation_id}`,
-   opens the pull request, labels it `gitops` and `env:{env}`, and enables squash auto-merge with the
-   trailers in the squash body.
-5. `abandon` closes the operation's open pull request and deletes its branch, releasing the file.
+3. Commits as the App with GraphQL `createCommitOnBranch` (`expectedHeadOid`) and the trailers
+   `Operation-Id`, `Requested-By` and `Traceparent`. If `main` has moved, it stages and validates again, up
+   to three times with 1 to 3 seconds of jitter, then ends `commit-conflict` and sends no terminal event;
+   the worker's reconciler dispatches again.
+4. Publishes the events `requested`, `committed` or `checks-failed` ([messages](#messages)).
 
 Every run writes a job summary with the outcome code. Submissions for one file run one at a time, in
 order (`concurrency` with `queue: max`), so a waiting submission is never replaced by a newer one.
-Retries and reconciles are fresh dispatches, never re-runs.
+Retries and reconciles are fresh dispatches, never re-runs. `v2` removes `abandon`, the pull request, the
+auto-merge and `prune-op-branches.yml`.
 
-## Commits, pull requests and checks
+## Commits and checks
 
-| Element        | Convention                                                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Branch         | `op/{operation_id}`                                                                                                            |
-| Commit         | `chore({env}): {write\|remove} {slug or platform}` with trailers `Operation-Id`, `Requested-By` and, when given, `Traceparent` |
-| Pull request   | Title as the commit; labels `gitops`, `env:{env}`; one environment per pull request                                            |
-| Merge          | Squash, by auto-merge, when `validate-desired-state / validate` passes; the squash body repeats the trailers                   |
-| Required check | `validate-desired-state / validate`, one stable name as a pull request changes one environment; offline, at its pin            |
+| Element        | Convention                                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Branch         | `main`: the App commits directly, bypassing only the pull request rule (`aip-machine-main`)                                            |
+| Commit         | `chore({env}): {write\|remove\|revert} {slug or platform}` with trailers `Operation-Id`, `Requested-By` and, when given, `Traceparent` |
+| Pull request   | None for a portal change                                                                                                               |
+| Required check | `submit` validates before it commits, offline, at the environment's pin                                                                |
 
 ## Apply
 
-| Step             | Platform (`ai-platform-deployments`)                                                                                                                   | Tenants (`ai-platform-tenants`)                                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Trigger          | Push to `main`; dispatch from `ai-platform-environments`                                                                                               | Push to `main`; dispatch from the platform apply                                                                                                  |
-| What it applies  | A push: each environment whose folder changed since its last successful apply, so a superseded run loses nothing; a dispatch: the environment it names | Same                                                                                                                                              |
-| Superseded guard | Stops a run whose commit is not the head of `main` (R1)                                                                                                | Same                                                                                                                                              |
-| Platform first   | –                                                                                                                                                      | Runs only if the pin's platform apply succeeded (R5)                                                                                              |
-| Re-validation    | The pin on `main` (R4)                                                                                                                                 | Every team file on `main` (R4)                                                                                                                    |
-| Plan and apply   | Saved plan, `plan-guard` (no deletes, R2), apply the plan                                                                                              | Saved plan, `plan-guard` (only deletes a removed team, model, its API operations or federation explains, spanning at most one team per apply, R2) |
-| Identity         | `id-aip-deploy-{env}` by OIDC in Environment `{env}`                                                                                                   | Same                                                                                                                                              |
-| Concurrency      | `platform-{env}`, never cancelled                                                                                                                      | `tenants-{env}`, never cancelled                                                                                                                  |
-| Record           | GitHub Deployment for `{env}` at the applied SHA                                                                                                       | Same                                                                                                                                              |
-| Run report       | Artifact `run-report-{env}.json`, unzipped (R12)                                                                                                       | Same, with failing teams (R3)                                                                                                                     |
-| Then             | Dispatches the tenants apply at the same release                                                                                                       | Permanently deletes the Entra registrations the apply removed, so they stop counting towards the deploy identity's limit                          |
+| Step             | Platform (`ai-platform-deployments`)                                                                                                                                          | Tenants (`ai-platform-tenants`)                                                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trigger          | Push to `main`; dispatch from `ai-platform-environments`                                                                                                                      | Push to `main`; dispatch from the platform apply                                                                                                  |
+| What it applies  | A push: each environment whose folder changed since its last successful apply, so a superseded run loses nothing; a dispatch: the environment it names                        | Same                                                                                                                                              |
+| Superseded guard | Stops a run whose commit is not the head of `main` (R1)                                                                                                                       | Same                                                                                                                                              |
+| Platform first   | –                                                                                                                                                                             | Runs only if the pin's platform apply succeeded (R5)                                                                                              |
+| Re-validation    | The pin on `main` (R4)                                                                                                                                                        | Every team file on `main` (R4)                                                                                                                    |
+| Plan and apply   | Saved plan, `plan-guard` (no deletes, R2), apply the plan                                                                                                                     | Saved plan, `plan-guard` (only deletes a removed team, model, its API operations or federation explains, spanning at most one team per apply, R2) |
+| Identity         | `id-aip-deploy-{env}` by OIDC in Environment `{env}`                                                                                                                          | Same                                                                                                                                              |
+| Concurrency      | `platform-{env}`, never cancelled                                                                                                                                             | `tenants-{env}`, never cancelled                                                                                                                  |
+| Record           | GitHub Deployment for `{env}` at the applied SHA                                                                                                                              | Same                                                                                                                                              |
+| Run report       | Artifact `run-report-{env}.json`, unzipped (R12)                                                                                                                              | Same, with failing teams (R3)                                                                                                                     |
+| Events           | `deploying` after the preflight, then `deployed` or `deploy-failed` for each operation in the report, as `id-aip-events-{env}`; none for a superseded, empty or cancelled run | Same                                                                                                                                              |
+| Then             | Dispatches the tenants apply at the same release                                                                                                                              | Permanently deletes the Entra registrations the apply removed, so they stop counting towards the deploy identity's limit                          |
 
 Break-glass inputs, for engineers only: `allow_destroy` (R2 override, reported; also what lets one
 apply remove more than one team, so a mistaken sweep never runs unattended) and `force_unlock`
@@ -181,22 +184,61 @@ team, failing teams, whether a failure was unattributed, the number of Entra obj
 
 ## Operation states
 
-| Signal the Portal API reads                                                     | State                           |
-| ------------------------------------------------------------------------------- | ------------------------------- |
-| Submit run queued or running                                                    | `requested`                     |
-| Submit run failed (nothing written)                                             | `checks-failed`                 |
-| Pull request open with head `op/{operation_id}`                                 | `pr-raised`                     |
-| `validate-desired-state / validate` failed, or the pull request closed unmerged | `checks-failed`, then `abandon` |
-| Pull request merged at `M`                                                      | `merged`                        |
-| Deployment for `{env}` at `M` or a descendant, in progress                      | `deploying`                     |
-| …succeeded, and the run report lists the operation                              | `deployed`                      |
-| …failed with no later success, after the D14 policy                             | `deploy-failed`                 |
-| ARM reads confirm the resources in the run report's outputs                     | `verified`, then `active`       |
+The backend owns an operation's state and moves it forward only, from the events below and its own reads:
 
-A D14 revert or an abandon is itself an operation the Portal API follows to its end. If a revert ends
-`checks-failed` or `deploy-failed`, the Portal API flags the original operation, audits it and alerts an
-engineer, and never retries it. The revert's pull request stays open and keeps the file locked until
-the engineer acts (direction 14 October 2026).
+| Signal the backend reads                                           | State                                               |
+| ------------------------------------------------------------------ | --------------------------------------------------- |
+| Another operation holds the file                                   | `queued`                                            |
+| Accepted while the file is free; the command is on its way         | `requested`                                         |
+| `committed` event                                                  | `committed`                                         |
+| `deploying` event                                                  | `deploying`                                         |
+| `deployed` event                                                   | `deployed`                                          |
+| `checks-failed` or `deploy-failed` event, corroborated with GitHub | `checks-failed`, `deploy-failed`                    |
+| ARM reads confirm the resources the event names                    | `verified`, then `active` (`removed` for a removal) |
+| A stage passes its deadline                                        | `timed-out`                                         |
+
+A D14 revert is itself an operation the backend follows to its end. If a revert ends `checks-failed` or
+`deploy-failed`, the backend flags the original operation, audits it and alerts an engineer, and never
+retries it (direction 14 October 2026).
+
+## Messages
+
+The backend and the workflows do not call each other. The backend sends **commands** to the GitOps worker
+and receives **events** from the workflows and the worker, through two SQS FIFO queues (design C
+#architecture; plan: `ai-platform-discovery-docs` `docs/async-operations-plan.md` §5). The JSON Schemas
+are the contract, JSON Schema 2020-12 with `additionalProperties: false`:
+
+| Message | Schema                                                           | Producer                                             | Consumer | SQS group                                                                       | SQS deduplication ID |
+| ------- | ---------------------------------------------------------------- | ---------------------------------------------------- | -------- | ------------------------------------------------------------------------------- | -------------------- |
+| Command | [`command.schema.json`](../schemas/messages/command.schema.json) | the backend                                          | worker   | `{environment}/{team}`                                                          | `commandId`          |
+| Event   | [`event.schema.json`](../schemas/messages/event.schema.json)     | `id-aip-events-{env}` (the workflows) and the worker | backend  | the operation ID; the commit SHA for `break-glass`; `{environment}` for `pause` | `eventId`            |
+
+- **Identifiers.** `aip.gitops.command/1` and `aip.gitops.event/1`, in the `schema` field. Changes are
+  additive; a breaking change is a new identifier and a new queue contract, never an edit. Date-times use
+  the `date-time` format, so the validator needs `ajv-formats` or its equivalent.
+- **Examples.** [`schemas/messages/examples/`](../schemas/messages/examples) holds one command per `type`
+  and one event per `status`, plus `break-glass`, a run with no operation and each retryable failure. The
+  self-tests in `checks/` prove each is valid, that each rule rejects what it should, and that the examples
+  cover every status.
+- **Vendoring.** The backend and the worker copy both files byte for byte with
+  `npm run contracts:sync -- {ref}` (a release tag, or a commit SHA during a build) and
+  `npm run contracts:check` fails any difference.
+- **Commands.** `type` is `submit`, `apply` or `reconcile`. `commandId` is a UUIDv7 made with the operation's
+  outbox entry and kept when it is republished, so a new send is delivered and only a republish collapses.
+  A submit, and a reconcile from `requested`, carry `action`, `document` and, for a team file,
+  `expectedRevision`, or for a pin (team `platform` or `tenants`), `expectedBase`, which is null for an
+  environment's first pin. The worker passes them as the `submit` inputs above.
+- **Events.** `status` is `requested`, `checks-failed`, `committed`, `deploying`, `deployed`, `deploy-failed`,
+  `paused` or `resumed`; `source` is `submit`, `apply`, `pause` or `reconciler`. `eventId` is
+  `{operationId or commitSha or environment}:{status}:{runId}:{runAttempt}`, so a repeat collapses.
+  `operationId`, `team` and `path` are null for `break-glass`, `pause` and a run with no operation.
+  `failureReason {code, message, retryable}` comes with `checks-failed` and `deploy-failed`; `retryable` is
+  true exactly for `stale-revision`, `paused` and `commit-conflict` on `checks-failed`, and `paused` on
+  `deploy-failed`. `deployed` carries `appliedSha` and `resources[]`; `deploy-failed` carries `failingTeams[]`
+  and `attributable`.
+- **People.** `requestedBy` is `entra:{oid}`, `github:{user ID}` or `app:{name}`, never a name or an email address.
+
+The events identity that publishes them is created by the [bootstrap](bootstrap.md#the-events-identity).
 
 ## Traceability
 
@@ -211,8 +253,8 @@ Names are never written by people, yet every resource can be traced to the reque
 - **Tagged.** Every resource carries `aip-environment`, `aip-owner` and `aip-release`; team resources
   add `aip-team`, `aip-service-code`, `aip-operation-id` and `aip-source-sha`, the last commit that
   changed the team's file, so tags change only when that team changes.
-- **Linked.** Operation ID: MongoDB operation → branch and trailer → pull request → squash commit →
-  GitHub Deployment and run report → tags. `traceparent` follows the same path for design G.
+- **Linked.** Operation ID: backend operation → `Operation-Id` trailer on the commit → event → GitHub
+  Deployment and run report → tags. `traceparent` and `cdp_request_id` follow the same path for design G.
 - **Attributed.** `Requested-By`, `updatedBy` and `requestedBy` hold one principal: `entra:{oid}`
   for a person in the portal (the immutable Entra object ID the portal keys users on with `tid`),
   `github:{user ID}` for a person who dispatches `submit.yml` by hand (taken from the run's
@@ -223,5 +265,6 @@ Names are never written by people, yet every resource can be traced to the reque
 ## Schema evolution
 
 Expand and contract across two infra releases: a release that accepts the new shape, machine
-migration pull requests through `submit`, then a release that refuses the old shape.
-`schemaVersion` changes only for a breaking change.
+migration commits through `submit`, then a release that refuses the old shape.
+`schemaVersion` changes only for a breaking change. The message schemas change by addition only; the
+identifier's number (`/1`) changes for a breaking change, with the backend and the worker moved together.
