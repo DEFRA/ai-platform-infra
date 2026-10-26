@@ -1,0 +1,18 @@
+{
+  "schema": "aip.gitops.command/1",
+  "type": "submit",
+  "commandId": "0198a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2e",
+  "operationId": "op-4d6f8a0c",
+  "environment": "infradev",
+  "team": "platform",
+  "repository": "DEFRA/ai-platform-deployments",
+  "path": "environments/infradev/platform.json",
+  "action": "write",
+  "document": "{\n  \"environment\": \"infradev\",\n  \"release\": \"v0.10.0\"\n}\n",
+  "expectedBase": "89abcdef0123456789abcdef0123456789abcdef",
+  "attempt": 1,
+  "requestedBy": "app:ai-platform-release",
+  "traceparent": null,
+  "cdpRequestId": null,
+  "createdAt": "2026-10-26T13:00:00Z"
+}

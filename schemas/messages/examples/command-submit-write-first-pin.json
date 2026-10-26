@@ -1,0 +1,18 @@
+{
+  "schema": "aip.gitops.command/1",
+  "type": "submit",
+  "commandId": "0198a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2f",
+  "operationId": "op-6a8c0e2d",
+  "environment": "newenv",
+  "team": "platform",
+  "repository": "DEFRA/ai-platform-deployments",
+  "path": "environments/newenv/platform.json",
+  "action": "write",
+  "document": "{\n  \"environment\": \"newenv\",\n  \"release\": \"v0.10.0\"\n}\n",
+  "expectedBase": null,
+  "attempt": 1,
+  "requestedBy": "github:583231",
+  "traceparent": null,
+  "cdpRequestId": null,
+  "createdAt": "2026-10-26T13:10:00Z"
+}

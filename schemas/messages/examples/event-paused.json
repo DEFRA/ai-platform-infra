@@ -1,0 +1,19 @@
+{
+  "schema": "aip.gitops.event/1",
+  "eventId": "infradev:paused:25000000020:1",
+  "environment": "infradev",
+  "team": null,
+  "path": null,
+  "action": "pause",
+  "status": "paused",
+  "timestamp": "2026-10-26T11:00:00Z",
+  "source": "pause",
+  "requestedBy": "github:583231",
+  "repository": "DEFRA/ai-platform-tenants",
+  "traceparent": null,
+  "cdpRequestId": null,
+  "operationId": null,
+  "runId": 25000000020,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/DEFRA/ai-platform-tenants/actions/runs/25000000020"
+}

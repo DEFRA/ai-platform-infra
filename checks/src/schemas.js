@@ -62,4 +62,39 @@ function loadValidators(infraDir) {
   )
 }
 
-export { loadValidators, readJson }
+const MESSAGE_SCHEMAS = ['command', 'event']
+
+/**
+ * Compiles the queue message schemas in `schemas/messages/` (design: async
+ * GitOps operations, §5). They are separate from loadValidators on purpose:
+ * an infra checkout pinned before they existed has no such directory, and
+ * the checks that run against a pin must keep loading.
+ *
+ * @param {string} infraDir - Root of an ai-platform-infra checkout.
+ * @returns {Record<'command' | 'event', (document: unknown) => string[]>}
+ *   One validator per message, each returning a list of problems (empty when
+ *   valid).
+ */
+function loadMessageValidators(infraDir) {
+  const ajv = new Ajv2020({
+    allErrors: true,
+    strict: true,
+    strictRequired: false
+  })
+  addFormats(ajv)
+
+  return Object.fromEntries(
+    MESSAGE_SCHEMAS.map((name) => {
+      const validate = ajv.compile(
+        readJson(join(infraDir, 'schemas', 'messages', `${name}.schema.json`))
+      )
+
+      return [
+        name,
+        (document) => (validate(document) ? [] : formatErrors(validate.errors))
+      ]
+    })
+  )
+}
+
+export { loadMessageValidators, loadValidators, readJson }

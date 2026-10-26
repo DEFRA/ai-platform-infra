@@ -1,0 +1,24 @@
+{
+  "schema": "aip.gitops.event/1",
+  "eventId": "op-7f3c9a1e:checks-failed:25000000004:1",
+  "environment": "infradev",
+  "team": "alpha",
+  "path": "environments/infradev/alpha.json",
+  "action": "write",
+  "status": "checks-failed",
+  "timestamp": "2026-10-26T12:03:00Z",
+  "source": "submit",
+  "requestedBy": "entra:00000000-0000-0000-0000-000000000001",
+  "repository": "DEFRA/ai-platform-tenants",
+  "traceparent": null,
+  "cdpRequestId": null,
+  "operationId": "op-7f3c9a1e",
+  "runId": 25000000004,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/DEFRA/ai-platform-tenants/actions/runs/25000000004",
+  "failureReason": {
+    "code": "commit-conflict",
+    "message": "main moved on three times while the commit was staged.",
+    "retryable": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "aip.gitops.event/1",
+  "eventId": "op-7f3c9a1e:checks-failed:25000000001:1",
+  "environment": "infradev",
+  "team": "alpha",
+  "path": "environments/infradev/alpha.json",
+  "action": "write",
+  "status": "checks-failed",
+  "timestamp": "2026-10-26T12:00:20Z",
+  "source": "submit",
+  "requestedBy": "entra:00000000-0000-0000-0000-000000000001",
+  "repository": "DEFRA/ai-platform-tenants",
+  "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "cdpRequestId": "3f2b8d1c-6a4e-4c7b-9d2a-1e5f0a7b8c9d",
+  "operationId": "op-7f3c9a1e",
+  "runId": 25000000001,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/DEFRA/ai-platform-tenants/actions/runs/25000000001",
+  "failureReason": {
+    "code": "invalid-document",
+    "message": "The document at the environment's pin fails validation: capacity is over the policy.",
+    "retryable": false
+  }
+}

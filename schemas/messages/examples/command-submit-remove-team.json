@@ -1,0 +1,18 @@
+{
+  "schema": "aip.gitops.command/1",
+  "type": "submit",
+  "commandId": "0198a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c",
+  "operationId": "op-2b8d4f6a",
+  "environment": "infradev",
+  "team": "alpha",
+  "repository": "DEFRA/ai-platform-tenants",
+  "path": "environments/infradev/alpha.json",
+  "action": "remove",
+  "document": "",
+  "expectedRevision": 4,
+  "attempt": 1,
+  "requestedBy": "entra:00000000-0000-0000-0000-000000000001",
+  "traceparent": null,
+  "cdpRequestId": null,
+  "createdAt": "2026-10-26T12:05:00Z"
+}
