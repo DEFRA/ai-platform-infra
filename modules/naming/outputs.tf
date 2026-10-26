@@ -41,6 +41,11 @@ output "fragments" {
   }
 }
 
+output "federated_credential" {
+  description = "Format string for a federated credential trusting a GitHub Environment; format() it with the state repository and the Environment."
+  value       = "%s-%s"
+}
+
 output "backends" {
   description = "Format strings for API Management backends by hosting platform; format() them with the region."
   value = {

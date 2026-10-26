@@ -277,7 +277,7 @@ resource "azurerm_user_assigned_identity" "events" {
 resource "azurerm_federated_identity_credential" "events" {
   for_each = local.events_credentials
 
-  name                      = "${each.value.repository}-${each.value.environment}"
+  name                      = format(module.names.federated_credential, each.value.repository, each.value.environment)
   user_assigned_identity_id = azurerm_user_assigned_identity.events.id
   issuer                    = "https://token.actions.githubusercontent.com"
   subject                   = "${var.oidc_subject_prefixes[each.value.repository]}:environment:${each.value.environment}"

@@ -23,6 +23,11 @@ output "team" {
   value = module.naming.team
 }
 
+output "federated_credential" {
+  description = "Format string for a federated credential trusting a GitHub Environment; format() it with the state repository and the Environment."
+  value       = module.naming.federated_credential
+}
+
 output "backend" {
   description = "-backend-config values; add key = platform.tfstate, tenants.tfstate or bootstrap.tfstate."
   value = {
