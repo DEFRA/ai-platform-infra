@@ -118,7 +118,7 @@ for `autoPin` environments, dispatch `submit.yml` on `main` of the state reposit
 | `action`            | `write` (create or replace the file), `remove` (delete it) or `revert` (undo an earlier operation; a write recorded as its own operation)                                            |
 | `environment`       | Registry entry name                                                                                                                                                                  |
 | `path`              | `environments/{env}/{slug}.json` or `environments/{env}/platform.json`                                                                                                               |
-| `document`          | The whole canonical document for `write`; empty otherwise                                                                                                                            |
+| `document`          | The whole canonical document for `write` and `revert`; empty only for `remove`                                                                                                       |
 | `operation_id`      | Optional, `^[a-z0-9][a-z0-9-]{7,63}$`. The run name carries it as `({operation_id})`, which is how the worker finds the run. A run started by hand generates its own and refuses one |
 | `expected_revision` | The team file's `revision` the caller last read, `0` for a new file; team files only                                                                                                 |
 | `expected_base`     | The pin file's blob SHA on `main` the caller last read; pins only. Every write, an admin's too, names its base                                                                       |
