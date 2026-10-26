@@ -121,7 +121,7 @@ for `autoPin` environments, dispatch `submit.yml` on `main` of the state reposit
 | `document`          | The whole canonical document for `write` and `revert`; empty only for `remove`                                                                                                       |
 | `operation_id`      | Optional, `^[a-z0-9][a-z0-9-]{7,63}$`. The run name carries it as `({operation_id})`, which is how the worker finds the run. A run started by hand generates its own and refuses one |
 | `expected_revision` | The team file's `revision` the caller last read, `0` for a new file; team files only                                                                                                 |
-| `expected_base`     | The pin file's blob SHA on `main` the caller last read; pins only. Every write, an admin's too, names its base                                                                       |
+| `expected_base`     | The pin file's blob SHA on `main` last read, `0` for a new file (a command's `expectedBase` is null); pins only. Every write, an admin's too, names its base                         |
 | `requested_by`      | `entra:{object ID}` of the signed-in person; replaced by `github:{user ID}` when a person dispatches the run                                                                         |
 | `trace_parent`      | Optional W3C `traceparent`, carried into the commit and the events                                                                                                                   |
 | `cdp_request_id`    | Optional CDP request ID, carried into the events                                                                                                                                     |

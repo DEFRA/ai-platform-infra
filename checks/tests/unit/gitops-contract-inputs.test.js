@@ -31,4 +31,12 @@ describe('the submit inputs in the contract page match the command schema', () =
     expect(value).toMatch(/`revert`/)
     expect(value).toMatch(/empty .*`remove`/)
   })
+
+  test('expected_base is `0` for a first pin, which the command schema carries as null', () => {
+    const value = submitInputValue('expected_base')
+
+    expect(value).toMatch(/`0` for a new file/)
+    expect(value).toMatch(/`expectedBase`/)
+    expect(value).toMatch(/null/)
+  })
 })

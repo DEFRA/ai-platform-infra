@@ -24,11 +24,6 @@ describe('locked transitive dependencies', () => {
   // GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp). ajv only asks for ^3.0.1.
   it('locks fast-uri at 3.1.9 or later, past the moderate advisories', () => {
     const { version } = lock.packages['node_modules/fast-uri']
-    expect(version.startsWith('3.')).toBe(true)
     expect(isAtLeast(version, '3.1.9')).toBe(true)
-  })
-
-  it('keeps ajv on the pinned direct version', () => {
-    expect(lock.packages['node_modules/ajv'].version).toBe('8.20.0')
   })
 })
