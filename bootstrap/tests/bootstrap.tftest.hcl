@@ -310,6 +310,11 @@ run "audiences_the_events_token_to_its_own_registration" {
   command = apply
 
   assert {
+    condition     = module.events_audience.application_owners == toset([data.azuread_service_principal.deploy.object_id]) && module.events_audience.service_principal_owners == toset([data.azuread_service_principal.deploy.object_id])
+    error_message = "the deploy identity, and only it, owns the audience's application and service principal, so the platform apply can manage them afterwards"
+  }
+
+  assert {
     condition     = module.events_audience.identifier_uri == "api://${module.events_audience.client_id}"
     error_message = "the token audience is the registration's own identifier URI"
   }

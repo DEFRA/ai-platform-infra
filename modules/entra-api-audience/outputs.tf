@@ -9,3 +9,13 @@ output "identifier_uri" {
 output "object_id" {
   value = azuread_application.this.object_id
 }
+
+output "application_owners" {
+  description = "Owners of the application registration."
+  value       = azuread_application.this.owners
+}
+
+output "service_principal_owners" {
+  description = "Owners of the service principal."
+  value       = azuread_service_principal.this.owners
+}
