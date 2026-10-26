@@ -6,6 +6,7 @@ provider "azurerm" {
     "Microsoft.CognitiveServices",
     "Microsoft.Insights",
     "Microsoft.KeyVault",
+    "Microsoft.ManagedIdentity",
     "Microsoft.OperationalInsights",
     "Microsoft.Storage",
   ]

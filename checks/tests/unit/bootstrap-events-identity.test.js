@@ -86,3 +86,17 @@ resource "azurerm_role_assignment" "deploy_state" {
     expect(eventsRoleGrants(source)).toEqual([])
   })
 })
+
+describe('the bootstrap registers the resource provider of the events identity', () => {
+  test('Microsoft.ManagedIdentity is in resource_providers_to_register', () => {
+    // AzureRM 5 registers nothing by default, so a fresh subscription refuses
+    // the identity with MissingSubscriptionRegistration without it.
+    const providers = readFileSync(join(BOOTSTRAP_DIR, 'providers.tf'), 'utf8')
+    const list = providers.match(
+      /resource_providers_to_register\s*=\s*\[([^\]]*)\]/
+    )
+
+    expect(list).not.toBeNull()
+    expect(list[1]).toContain('"Microsoft.ManagedIdentity"')
+  })
+})
