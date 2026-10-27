@@ -228,7 +228,9 @@ are the contract, JSON Schema 2020-12 with `additionalProperties: false`:
   A submit, and a reconcile from `requested`, carry `action` and, for a `write` or a `revert`, the whole
   `document`; and `expectedRevision` for a team file, or `expectedBase` for a pin (team `platform` or
   `tenants`), which is null for an environment's first pin. The worker passes them as the `submit` inputs
-  above. The target is whole: `operationId`, `team` and `path` are all present or, for an `apply` that is for
+  above. A reconcile from `requested` may also carry `submittedAt`, when the operation's latest submit was
+  queued (the creation time of its latest submit outbox entry): the worker ignores submit runs and refusals
+  that finished before it, and with none it applies no such filter. The target is whole: `operationId`, `team` and `path` are all present or, for an `apply` that is for
   no operation, all null. The slugs `platform` and `tenants` are reserved for pins, so `team` alone says
   which kind of file a command targets: `aip-checks` refuses a team file that takes either as its slug.
 - **Events.** `status` is `requested`, `checks-failed`, `committed`, `deploying`, `deployed`, `deploy-failed`,

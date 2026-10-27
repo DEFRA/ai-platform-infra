@@ -925,6 +925,34 @@ describe('the command schema', () => {
       expectRejected('command', without(command, 'expectedRevision'))
     })
 
+    test('submittedAt is an optional date-time on a reconcile from requested', () => {
+      const command = example('command-reconcile-requested')
+
+      expect(command.submittedAt).toBe('2026-10-26T12:09:30Z')
+      expect(validators.command(command)).toEqual([])
+      expect(validators.command(without(command, 'submittedAt'))).toEqual([])
+    })
+
+    test.each(['yesterday', '2026-10-26', 1761480570, null, ''])(
+      'refuses %j as submittedAt',
+      (submittedAt) => {
+        expectRejected(
+          'command',
+          example('command-reconcile-requested', { submittedAt })
+        )
+      }
+    )
+
+    test.each([
+      ['a submit', 'command-submit-write-team'],
+      ['an apply', 'command-apply']
+    ])('refuses submittedAt on %s: only a reconcile has one', (_n, name) => {
+      expectRejected(
+        'command',
+        example(name, { submittedAt: '2026-10-26T12:09:30Z' })
+      )
+    })
+
     test('a reconcile from a later state needs only the state', () => {
       const command = example('command-reconcile-deploying')
 
