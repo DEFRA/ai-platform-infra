@@ -1,7 +1,7 @@
 mock_provider "azuread" {}
 
 variables {
-  display_name     = "app-aip-events-infradev"
+  display_name     = "api-aip-infradev"
   owner_object_ids = ["00000000-0000-0000-0000-000000000002"]
   environment      = "infradev"
 }

@@ -64,8 +64,8 @@ run "uses_logical_labels_where_ccoe_has_no_code" {
   }
 
   assert {
-    condition     = output.names.events_identity == "id-aip-events-infradev" && output.names.events_audience_app == "app-aip-events-infradev"
-    error_message = "the events identity and its audience registration are id-aip-events-{env} and app-aip-events-{env}"
+    condition     = output.names.events_identity == "id-aip-events-infradev"
+    error_message = "the events identity is id-aip-events-{env}"
   }
 }
 
@@ -77,8 +77,8 @@ run "names_the_events_identity_for_each_environment" {
   }
 
   assert {
-    condition     = output.names.events_identity == "id-aip-events-abcdefghijklmnop" && output.names.events_audience_app == "app-aip-events-abcdefghijklmnop"
-    error_message = "the events names follow the environment, up to the 16-character maximum"
+    condition     = output.names.events_identity == "id-aip-events-abcdefghijklmnop"
+    error_message = "the events identity name follows the environment, up to the 16-character maximum"
   }
 }
 

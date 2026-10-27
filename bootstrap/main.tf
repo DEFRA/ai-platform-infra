@@ -284,14 +284,14 @@ resource "azurerm_federated_identity_credential" "events" {
   audience                  = ["api://AzureADTokenExchange"]
 }
 
-# The audience: a registration with no permissions and no credential, owned by
-# the deploy identity so the platform apply can manage it afterwards.
-module "events_audience" {
-  source = "../modules/entra-api-audience"
-
-  display_name     = local.names.events_audience_app
-  owner_object_ids = [data.azuread_service_principal.deploy.object_id]
-  environment      = local.environment
+# The audience is the deploy identity's own app registration, so the platform
+# does not need Entra rights to create another. Its identifier URI is set here;
+# its access token version (v2, so aud is the client ID) is read, not written,
+# because azuread has no resource for it: set it once with `az ad app update`
+# (docs/bootstrap.md) and the events_identity output refuses to plan without it.
+resource "azuread_application_identifier_uri" "events_audience" {
+  application_id = data.azuread_application.deploy.id
+  identifier_uri = "api://${data.azuread_application.deploy.client_id}"
 }
 
 data "azuread_application_published_app_ids" "well_known" {}

@@ -23,7 +23,11 @@ mock_provider "azurerm" {
 mock_provider "azuread" {
   mock_data "azuread_application" {
     defaults = {
-      id = "/applications/00000000-0000-0000-0000-000000000001"
+      id        = "/applications/00000000-0000-0000-0000-000000000001"
+      client_id = "00000000-0000-0000-0000-000000000003"
+      api = [{
+        requested_access_token_version = 2
+      }]
     }
   }
 
@@ -306,21 +310,16 @@ run "gives_the_events_identity_no_azure_role" {
   }
 }
 
-run "audiences_the_events_token_to_its_own_registration" {
+run "audiences_the_events_token_to_the_deploy_registration" {
   command = apply
 
   assert {
-    condition     = module.events_audience.application_owners == toset([data.azuread_service_principal.deploy.object_id]) && module.events_audience.service_principal_owners == toset([data.azuread_service_principal.deploy.object_id])
-    error_message = "the deploy identity, and only it, owns the audience's application and service principal, so the platform apply can manage them afterwards"
+    condition     = azuread_application_identifier_uri.events_audience.application_id == data.azuread_application.deploy.id && azuread_application_identifier_uri.events_audience.identifier_uri == "api://${data.azuread_application.deploy.client_id}"
+    error_message = "the token audience is the deploy registration's own identifier URI, and the bootstrap creates no other registration"
   }
 
   assert {
-    condition     = module.events_audience.identifier_uri == "api://${module.events_audience.client_id}"
-    error_message = "the token audience is the registration's own identifier URI"
-  }
-
-  assert {
-    condition     = output.events_identity.audience == module.events_audience.client_id && output.events_identity.audience_uri == module.events_audience.identifier_uri
+    condition     = output.events_identity.audience == data.azuread_application.deploy.client_id && output.events_identity.audience_uri == azuread_application_identifier_uri.events_audience.identifier_uri
     error_message = "the audience is the registration's client ID, which is the aud claim of the v2 token CDP checks; the identifier URI is kept apart as the token request's resource"
   }
 
@@ -335,9 +334,26 @@ run "audiences_the_events_token_to_its_own_registration" {
   }
 
   assert {
-    condition     = output.events_identity.name == "id-aip-events-infradev" && output.events_identity.audience_name == "app-aip-events-infradev"
-    error_message = "the outputs name both the identity and its audience registration"
+    condition     = output.events_identity.name == "id-aip-events-infradev"
+    error_message = "the output names the events identity"
   }
+}
+
+run "refuses_a_deploy_registration_that_issues_v1_tokens" {
+  command = plan
+
+  override_data {
+    target = data.azuread_application.deploy
+    values = {
+      id        = "/applications/00000000-0000-0000-0000-000000000001"
+      client_id = "00000000-0000-0000-0000-000000000003"
+      api = [{
+        requested_access_token_version = 0
+      }]
+    }
+  }
+
+  expect_failures = [output.events_identity]
 }
 
 run "refuses_a_third_repository_for_the_events_identity" {

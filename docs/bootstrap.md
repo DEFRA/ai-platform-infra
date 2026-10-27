@@ -31,8 +31,17 @@ already holds Contributor there.
    User Access Administrator (or Owner) on the platform's scope as well. Infradev's holds it on the whole
    subscription (confirmed 20 October 2026); in any other environment set `grant_user_access_administrator`
    to `true` (default `false`, so a holder is left alone) before its first platform apply.
-6. The events identity needs an Entra app registration (its token audience), so the operator can create
-   one in the tenant. The deploy identity owns it afterwards.
+6. The events identity's token audience is the deploy identity's own app registration, so no Entra right to
+   create an application is needed. Set its access token version to 2 once (Terraform cannot write it, and
+   the `events_identity` output refuses to plan until it is 2), as an owner of that registration:
+
+   ```sh
+   oid=$(az ad app show --id <deploy client ID> --query id -o tsv)
+   az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications/$oid" \
+     --headers "Content-Type=application/json" --body '{"api":{"requestedAccessTokenVersion":2}}'
+   ```
+
+   This changes the tokens issued **for** that registration as a resource, not the tokens it obtains to deploy.
 
 ## Run
 
@@ -98,10 +107,12 @@ pins and applies the platform. Then set the events variables below.
 ## The events identity
 
 The apply creates `id-aip-events-{env}`, a user-assigned managed identity with **no Azure role**, in the state
-resource group, and `app-aip-events-{env}`, an app registration with no permissions and no credential, owned
-by the deploy identity. The workflows (`submit`, the apply and `pause.yml`) sign in as the identity and
-present a token for the registration, which CDP's IAM role trusts to send to the events queue and do nothing
-else (design C #identities).
+resource group, and adds the identifier URI `api://{deploy client ID}` to the deploy identity's app registration,
+which is the token audience. The workflows (`submit`, the apply and `pause.yml`) sign in as the identity and
+present a token for that registration, which CDP's IAM role trusts, only for this identity as subject, to send
+to the events queue and do nothing else (design C #identities). The audience registration is the deploy
+identity's, not a separate no-permission one: the role's subject restriction, not the audience, keeps the
+deploy identity itself out.
 
 The identity trusts four subjects, and the `oidc_subject_prefixes` validation refuses any other repository:
 
@@ -118,7 +129,7 @@ conflict on a credential, run it again; the rest of the apply is unchanged, or u
 Read the values with `terraform -chdir=bootstrap output events_identity`:
 
 1. In both Environments (`{env}` and `{env}-events`) of both state repositories set `AIP_EVENTS_CLIENT_ID`
-   to `client_id` and `AIP_EVENTS_AUDIENCE` to `audience`: the registration's client ID, which is the `aud`
+   to `client_id` and `AIP_EVENTS_AUDIENCE` to `audience`: the deploy registration's client ID, which is the `aud`
    claim of the v2 access token the workflows present (`audience_uri`, its `api://` identifier URI, requests
    the same token and is never the `aud` value). `AIP_EVENTS_QUEUE_URL` and `AIP_EVENTS_ROLE_ARN`
    come from CDP (step 2); `AIP_PAUSED` goes on `{env}-events` only.
