@@ -1,0 +1,22 @@
+{
+  "schema": "aip.gitops.event/1",
+  "eventId": "89abcdef0123456789abcdef0123456789abcdef:committed:25000000030:1",
+  "environment": "infradev",
+  "team": null,
+  "path": null,
+  "action": "break-glass",
+  "status": "committed",
+  "timestamp": "2026-10-26T15:00:00Z",
+  "source": "apply",
+  "requestedBy": "github:583231",
+  "repository": "DEFRA/ai-platform-tenants",
+  "traceparent": null,
+  "cdpRequestId": null,
+  "operationId": null,
+  "runId": 25000000030,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/DEFRA/ai-platform-tenants/actions/runs/25000000030",
+  "commitSha": "89abcdef0123456789abcdef0123456789abcdef",
+  "committedAt": "2026-10-26T14:58:00Z",
+  "pullRequestUrl": "https://github.com/DEFRA/ai-platform-tenants/pull/42"
+}

@@ -71,6 +71,9 @@ locals {
   logical_names = {
     api_management   = "apim-${local.service}-${var.environment}"
     api_audience_app = "api-${local.service}-${var.environment}"
+    # The workflows publish status events as this identity, which has no Azure
+    # role, with a token for the deploy identity's registration.
+    events_identity = "id-${local.service}-events-${var.environment}"
     # A custom role name is unique per tenant, so it carries the environment.
     apim_subscription_role = "${local.service}-${var.environment}-apim-subscription-manager"
     foundry_accounts = {

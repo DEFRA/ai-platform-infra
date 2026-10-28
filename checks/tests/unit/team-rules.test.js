@@ -125,6 +125,18 @@ describe('checkTeamFile', () => {
     ).toContain('file name must equal team.slug')
   })
 
+  test.each(['platform', 'tenants'])(
+    'refuses %s as a team slug, which names a pin in the GitOps messages',
+    (slug) => {
+      const alpha = alphaTeam()
+      const document = { ...alpha, team: { ...alpha.team, slug } }
+
+      expect(check(document)).toContain(
+        `${slug} is reserved: a GitOps message names a pin by it, never a team`
+      )
+    }
+  )
+
   test('refuses a folder that is not the environment', () => {
     const document = alphaTeam({ environment: 'sandbox' })
 

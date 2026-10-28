@@ -62,6 +62,42 @@ run "uses_logical_labels_where_ccoe_has_no_code" {
     condition     = output.names.apim_subscription_role == "aip-infradev-apim-subscription-manager"
     error_message = "the custom role carries the environment, because role names are unique per tenant"
   }
+
+  assert {
+    condition     = output.names.events_identity == "id-aip-events-infradev"
+    error_message = "the events identity is id-aip-events-{env}"
+  }
+}
+
+run "names_the_events_identity_for_each_environment" {
+  command = plan
+
+  variables {
+    environment = "abcdefghijklmnop"
+  }
+
+  assert {
+    condition     = output.names.events_identity == "id-aip-events-abcdefghijklmnop"
+    error_message = "the events identity name follows the environment, up to the 16-character maximum"
+  }
+}
+
+run "names_a_github_environment_credential_from_the_repository_and_environment" {
+  command = plan
+
+  assert {
+    condition     = format(output.federated_credential, "ai-platform-tenants", "infradev-events") == "ai-platform-tenants-infradev-events"
+    error_message = "a federated credential for a GitHub Environment is named {repository}-{environment}, which keeps the names already applied"
+  }
+}
+
+run "lists_the_managed_identity_among_the_ccoe_gaps" {
+  command = plan
+
+  assert {
+    condition     = contains(output.ccoe_gaps, "User-assigned managed identity")
+    error_message = "the events identity uses a logical label, so the gap is raised with CCoE"
+  }
 }
 
 run "rejects_an_unknown_sub_type" {

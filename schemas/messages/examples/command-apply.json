@@ -1,0 +1,15 @@
+{
+  "schema": "aip.gitops.command/1",
+  "type": "apply",
+  "commandId": "0198a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a30",
+  "operationId": null,
+  "environment": "infradev",
+  "team": null,
+  "repository": "DEFRA/ai-platform-tenants",
+  "path": null,
+  "attempt": 1,
+  "requestedBy": "app:ai-platform-backend",
+  "traceparent": null,
+  "cdpRequestId": null,
+  "createdAt": "2026-10-26T14:00:00Z"
+}
