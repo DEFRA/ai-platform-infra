@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.0...v0.10.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **catalogue:** raise the infradev gpt-4o quota to 100 ([#33](https://github.com/DEFRA/ai-platform-infra/issues/33)) ([099b730](https://github.com/DEFRA/ai-platform-infra/commit/099b73042b3a38c6764a70d52ed6b0c2c47aaca9))
+
 ## [0.10.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.9.2...v0.10.0) (2026-10-28)
 
 
