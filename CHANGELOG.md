@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.1...v0.10.2) (2026-10-28)
+
+
+### Bug Fixes
+
+* **ci:** call the release workflows at v2 so releases pin themselves ([#35](https://github.com/DEFRA/ai-platform-infra/issues/35)) ([23130eb](https://github.com/DEFRA/ai-platform-infra/commit/23130ebe5e618a16b1882a5763159645c22d3158))
+
 ## [0.10.1](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.0...v0.10.1) (2026-10-28)
 
 
