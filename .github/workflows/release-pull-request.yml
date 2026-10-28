@@ -9,5 +9,5 @@ permissions: {}
 
 jobs:
   release-merge:
-    uses: DEFRA/ai-platform-workflows/.github/workflows/release-merge.yml@v1
+    uses: DEFRA/ai-platform-workflows/.github/workflows/release-merge.yml@v2
     secrets: inherit
