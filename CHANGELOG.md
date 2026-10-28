@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.9.2...v0.10.0) (2026-10-28)
+
+
+### Features
+
+* add the GitOps message schemas and the events identity ([#31](https://github.com/DEFRA/ai-platform-infra/issues/31)) ([658e942](https://github.com/DEFRA/ai-platform-infra/commit/658e9423a96c6f7f56bc54d723d22bf6fba477f3))
+
 ## [0.9.2](https://github.com/DEFRA/ai-platform-infra/compare/v0.9.1...v0.9.2) (2026-10-23)
 
 
