@@ -26,7 +26,7 @@ mock_provider "azuread" {
       id        = "/applications/00000000-0000-0000-0000-000000000001"
       client_id = "00000000-0000-0000-0000-000000000003"
       api = [{
-        requested_access_token_version = 2
+        requested_access_token_version = 1
       }]
     }
   }
@@ -320,12 +320,17 @@ run "audiences_the_events_token_to_the_deploy_registration" {
 
   assert {
     condition     = output.events_identity.audience == data.azuread_application.deploy.client_id && output.events_identity.audience_uri == azuread_application_identifier_uri.events_audience.identifier_uri
-    error_message = "the audience is the registration's client ID, which is the aud claim of the v2 token CDP checks; the identifier URI is kept apart as the token request's resource"
+    error_message = "the audience is the registration's client ID, the aud of the v1 token the workflows request by that ID; the identifier URI is kept apart"
   }
 
   assert {
     condition     = output.events_identity.audience != output.events_identity.audience_uri && !startswith(output.events_identity.audience, "api://")
-    error_message = "a v2 access token carries the client ID as aud, never api://{client ID}, so the value handed to CDP must not be the URI"
+    error_message = "the workflows request the token by client ID, so aud is the client ID, never api://{client ID}, and that is what CDP must trust"
+  }
+
+  assert {
+    condition     = output.events_identity.issuer == "https://sts.windows.net/00000000-0000-0000-0000-0000000000e3/"
+    error_message = "the issuer handed to CDP is the tenant's v1 issuer, with its trailing slash, as a v1 token's iss is"
   }
 
   assert {
@@ -339,8 +344,25 @@ run "audiences_the_events_token_to_the_deploy_registration" {
   }
 }
 
-run "refuses_a_deploy_registration_that_issues_v1_tokens" {
+run "refuses_a_deploy_registration_that_issues_v2_tokens" {
   command = plan
+
+  override_data {
+    target = data.azuread_application.deploy
+    values = {
+      id        = "/applications/00000000-0000-0000-0000-000000000001"
+      client_id = "00000000-0000-0000-0000-000000000003"
+      api = [{
+        requested_access_token_version = 2
+      }]
+    }
+  }
+
+  expect_failures = [output.events_identity]
+}
+
+run "accepts_a_deploy_registration_left_at_the_default_token_version" {
+  command = apply
 
   override_data {
     target = data.azuread_application.deploy
@@ -353,7 +375,10 @@ run "refuses_a_deploy_registration_that_issues_v1_tokens" {
     }
   }
 
-  expect_failures = [output.events_identity]
+  assert {
+    condition     = output.events_identity.issuer == "https://sts.windows.net/00000000-0000-0000-0000-0000000000e3/"
+    error_message = "Entra's default token version is v1, so an unset version plans and hands CDP the v1 issuer"
+  }
 }
 
 run "refuses_a_third_repository_for_the_events_identity" {

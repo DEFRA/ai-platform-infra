@@ -286,9 +286,9 @@ resource "azurerm_federated_identity_credential" "events" {
 
 # The audience is the deploy identity's own app registration, so the platform
 # does not need Entra rights to create another. Its identifier URI is set here;
-# its access token version (v2, so aud is the client ID) is read, not written,
-# because azuread has no resource for it: set it once with `az ad app update`
-# (docs/bootstrap.md) and the events_identity output refuses to plan without it.
+# its access token version (v1, as a v2 token's azp would be AWS's audience) is
+# read, not written, because azuread has no resource for it: set it once with
+# `az rest` (docs/bootstrap.md) and the events_identity output refuses v2.
 resource "azuread_application_identifier_uri" "events_audience" {
   application_id = data.azuread_application.deploy.id
   identifier_uri = "api://${data.azuread_application.deploy.client_id}"
