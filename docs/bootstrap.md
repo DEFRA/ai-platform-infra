@@ -32,13 +32,15 @@ already holds Contributor there.
    subscription (confirmed 20 October 2026); in any other environment set `grant_user_access_administrator`
    to `true` (default `false`, so a holder is left alone) before its first platform apply.
 6. The events identity's token audience is the deploy identity's own app registration, so no Entra right to
-   create an application is needed. Set its access token version to 2 once (Terraform cannot write it, and
-   the `events_identity` output refuses to plan until it is 2), as an owner of that registration:
+   create an application is needed. Make it issue v1 access tokens (Terraform cannot write the setting, and
+   the `events_identity` output refuses to plan while it is 2). A v2 token carries `azp`, the events
+   identity's client ID, which AWS STS takes as the audience in place of `aud`, so CDP's role would refuse it;
+   a v1 token has no `azp`. As an owner of that registration:
 
    ```sh
    oid=$(az ad app show --id <deploy client ID> --query id -o tsv)
    az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications/$oid" \
-     --headers "Content-Type=application/json" --body '{"api":{"requestedAccessTokenVersion":2}}'
+     --headers "Content-Type=application/json" --body '{"api":{"requestedAccessTokenVersion":1}}'
    ```
 
    This changes the tokens issued **for** that registration as a resource, not the tokens it obtains to deploy.
@@ -129,13 +131,14 @@ conflict on a credential, run it again; the rest of the apply is unchanged, or u
 Read the values with `terraform -chdir=bootstrap output events_identity`:
 
 1. In both Environments (`{env}` and `{env}-events`) of both state repositories set `AIP_EVENTS_CLIENT_ID`
-   to `client_id` and `AIP_EVENTS_AUDIENCE` to `audience`: the deploy registration's client ID, which is the `aud`
-   claim of the v2 access token the workflows present (`audience_uri`, its `api://` identifier URI, requests
-   the same token and is never the `aud` value). `AIP_EVENTS_QUEUE_URL` and `AIP_EVENTS_ROLE_ARN`
-   come from CDP (step 2); `AIP_PAUSED` goes on `{env}-events` only.
-2. Ask CDP support to allow external access to the events queue for this identity as `sqs:SendMessage`
-   only: the issuer for the tenant (`tenant_id`), the `audience` (the client ID above, to match `aud`), and
-   `principal_id` as the `subject_id` the role trusts. Never send a secret: there is none.
+   to `client_id` and `AIP_EVENTS_AUDIENCE` to `audience`: the deploy registration's client ID, which the
+   workflows request the token for and so is its `aud` (`audience_uri`, its `api://` identifier URI, would make
+   `aud` the URI). `AIP_EVENTS_QUEUE_URL` and `AIP_EVENTS_ROLE_ARN` come from CDP (step 2); `AIP_PAUSED` goes
+   on `{env}-events` only. `AZURE_TENANT_ID` is the repository variable set above.
+2. Ask CDP support for external access to the events queue for this identity, as `sqs:SendMessage` only, in
+   their "Managed Identities against an App Reg" form: `issuer_url` is `issuer`
+   (`https://sts.windows.net/{tenant}/`, with the trailing slash, as the v1 token's `iss` is), `client_id` is
+   `audience` and `subject_id` is `principal_id`. Never send a secret: there is none.
 3. Do not grant the identity an Azure role. A test fails the build if a role assignment in the bootstrap
    names it.
 

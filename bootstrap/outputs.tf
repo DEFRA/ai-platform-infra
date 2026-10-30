@@ -17,18 +17,19 @@ output "events_federated_subjects" {
 }
 
 output "events_identity" {
-  description = "What the Environments and CDP need to publish status events. Set client_id as AIP_EVENTS_CLIENT_ID and audience as AIP_EVENTS_AUDIENCE in both Environments of both state repositories. Give CDP the tenant, the audience and principal_id: audience is the deploy identity's registration client ID, which is the aud claim of the v2 access token the workflow presents, and principal_id is the object ID its IAM role trusts as subject. audience_uri is the registration's identifier URI, another resource value that requests the same token."
+  description = "What the Environments and CDP need to publish status events. Set client_id as AIP_EVENTS_CLIENT_ID and audience as AIP_EVENTS_AUDIENCE in both Environments of both state repositories. Give CDP issuer as issuer_url, audience as client_id and principal_id as subject_id: the deploy registration issues v1 access tokens, whose issuer is the tenant's v1 issuer and whose aud is the value the token is requested for, the registration's client ID; a v2 token would carry azp, which AWS STS takes as the audience instead of aud. audience_uri is the registration's identifier URI, which would make aud the URI."
   value = {
     name         = azurerm_user_assigned_identity.events.name
     client_id    = azurerm_user_assigned_identity.events.client_id
     principal_id = azurerm_user_assigned_identity.events.principal_id
     tenant_id    = azurerm_user_assigned_identity.events.tenant_id
+    issuer       = "https://sts.windows.net/${azurerm_user_assigned_identity.events.tenant_id}/"
     audience     = data.azuread_application.deploy.client_id
     audience_uri = azuread_application_identifier_uri.events_audience.identifier_uri
   }
 
   precondition {
-    condition     = one(data.azuread_application.deploy.api).requested_access_token_version == 2
-    error_message = "The deploy identity's app registration must issue v2 access tokens, so aud is its client ID: set api.requestedAccessTokenVersion to 2 with `az rest --method PATCH` on its Graph application (docs/bootstrap.md, The events identity)."
+    condition     = one(data.azuread_application.deploy.api).requested_access_token_version != 2
+    error_message = "The deploy identity's app registration must issue v1 access tokens: a v2 token carries azp, which AWS STS takes as the audience, so CDP's role refuses it. Set api.requestedAccessTokenVersion to 1 with `az rest --method PATCH` on its Graph application (docs/bootstrap.md, The events identity)."
   }
 }
