@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.3](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.2...v0.10.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* issue v1 tokens for the events audience and give CDP the v1 issuer ([#37](https://github.com/DEFRA/ai-platform-infra/issues/37)) ([07d9868](https://github.com/DEFRA/ai-platform-infra/commit/07d98689741061479c7ed4c3041be4a311b2ca6a))
+
 ## [0.10.2](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.1...v0.10.2) (2026-10-28)
 
 
