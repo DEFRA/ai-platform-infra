@@ -4,9 +4,12 @@
     subscription of an API that requires one; this refuses a subscription past the end
     date the Portal API sets at issue and renewal (design C #model-access), and any call
     that somehow carries none. The subscription is the caller for the steps that follow.
-    A bearer token on this path is refused outright (401 invalid-credential), so a call
-    carries a key or a token, never both, and a token alone never reaches a model: API
-    Management also refuses a call with no key because the API requires a subscription.
+    A bearer token on this path is refused outright (401 invalid-token, the same code as
+    on a token path, with no bearer challenge because this path offers no bearer scheme),
+    so a call carries a key or a token, never both, and a token alone never reaches a
+    model: API Management also refuses a call with no key because the API requires a
+    subscription. Any Authorization header counts as a token, so a Research caller must
+    not send one alongside the key (B23 AC15: "a token on the Research path ... refused").
   -->
   <choose>
     <when condition="@(context.Request.Headers.ContainsKey("Authorization"))">
@@ -15,7 +18,7 @@
         <set-header name="Content-Type" exists-action="override">
           <value>application/json</value>
         </set-header>
-        <set-body>{"code":"invalid-credential"}</set-body>
+        <set-body>{"code":"invalid-token"}</set-body>
       </return-response>
     </when>
   </choose>

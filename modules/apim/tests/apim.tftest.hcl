@@ -306,15 +306,17 @@ run "shared_fragments" {
     error_message = "the team layer marks the caller only after T1 refused an unlisted client"
   }
 
-  # INF-2 (AC15): a token on the Research path is refused by policy, and a call there is a key or a token, never both.
+  # INF-2 and INF-5 (AC15, build-stories.md:992): a token on the Research path is refused by policy with the existing invalid-token code, and a call there is a key or a token, never both.
   assert {
     condition = (
       strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "<when condition=\"@(context.Request.Headers.ContainsKey(\"Authorization\"))\">") &&
-      strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "{\"code\":\"invalid-credential\"}") &&
+      strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "<set-body>{\"code\":\"invalid-token\"}</set-body>") &&
+      !strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "invalid-credential") &&
+      !strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "WWW-Authenticate") &&
       index(split("\n", azurerm_api_management_policy_fragment.shared["key_guard"].value), "    <when condition=\"@(context.Request.Headers.ContainsKey(\"Authorization\"))\">") <
       index(split("\n", azurerm_api_management_policy_fragment.shared["key_guard"].value), "        <set-body>{\"code\":\"subscription-expired\"}</set-body>")
     )
-    error_message = "the key guard refuses any Authorization header with 401 invalid-credential before it checks the subscription"
+    error_message = "the key guard refuses any Authorization header with 401 invalid-token (no new code, no bearer challenge) before it checks the subscription"
   }
 
   assert {

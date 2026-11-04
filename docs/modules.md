@@ -95,7 +95,7 @@ the body `model`. Prompt and response logging stays off (design G).
 The `research` API is the same module with `credential_type` `subscription-key`, generated from the
 platform-owned `research` team file. Its path is on the key-tier list, so the global policy runs
 `aip-key-guard`, and it requires an API-scoped subscription, which the backend mints per person; Terraform
-creates none. It has no team layer: the subscription is the caller, and `aip-key-guard` refuses any `Authorization` header (401 `invalid-credential`), so a call carries a key or a token, never both. Nothing translates the name: the policy skips `aip-request-model`, checks the deployment
+creates none. It has no team layer: the subscription is the caller, and `aip-key-guard` refuses any `Authorization` header with 401 `invalid-token` (B23 AC15: a token on the Research path is refused), so a call carries a key or a token, never both. Research callers must not send an `Authorization` header alongside the key; an OpenAI-style SDK that always sends one needs it removed or its key passed only in `Ocp-Apim-Subscription-Key`. Nothing translates the name: the policy skips `aip-request-model`, checks the deployment
 name the caller sent (the imported spec's path) against `allowedDeployments` and forwards it as sent, so
 that name is written in the research file and carried in the catalogue's `deploymentName`. The token and
 request counters are keyed by the caller's subscription, not the API, so each person has an allowance.
