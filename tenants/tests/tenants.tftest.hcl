@@ -25,6 +25,7 @@ override_data {
       resource_group_name            = "SNDAIPINFRGP1401"
       portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002"
       apim_fragments = {
+        team_grant    = "aip-team-grant"
         whoami        = "aip-whoami"
         request_model = "aip-request-model"
         backend       = { foundry = "aip-backend-foundry" }

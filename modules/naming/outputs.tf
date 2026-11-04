@@ -33,6 +33,7 @@ output "fragments" {
   value = {
     authorise     = "${local.service}-authorise"
     key_guard     = "${local.service}-key-guard"
+    team_grant    = "${local.service}-team-grant"
     whoami        = "${local.service}-whoami"
     request_model = "${local.service}-request-model"
     backend = {

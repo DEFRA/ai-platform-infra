@@ -128,6 +128,11 @@ run "plans_the_public_minimal_platform" {
     condition     = output.apim_backends.foundry.swedencentral == "aip-foundry-swedencentral" && output.apim_fragments.backend.foundry == "aip-backend-foundry"
     error_message = "the tenants root reads the backends and the backend fragment per hosting platform"
   }
+
+  assert {
+    condition     = output.apim_fragments.team_grant == "aip-team-grant"
+    error_message = "the tenants root reads the team layer fragment every team API includes"
+  }
 }
 
 run "deploys_into_an_existing_resource_group" {

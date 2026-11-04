@@ -1,6 +1,8 @@
 locals {
-  # The global guard branches on what the API declares: `key` runs aip-key-guard,
-  # anything else the OAuth guard (modules/apim/policies/global.xml).
+  # `key` for the research API, `oauth` for every team. The tier the gateway
+  # applies is taken from the API's path by the global policy, never from here;
+  # this only decides what the API requires (a subscription) and which of the
+  # API's own steps it carries.
   key_tier = var.credential_type == "subscription-key"
   declared = local.key_tier ? "key" : "oauth"
 
@@ -119,7 +121,7 @@ resource "azurerm_api_management_api_policy" "this" {
   api_management_name = var.api_management.name
   resource_group_name = var.api_management.resource_group_name
 
-  # The API's own facts, then <base /> for the global guard, then the shared
+  # The global layer first (<base />), then the API's own facts and the shared
   # steps; only the model routing and the limits are generated per API.
   xml_content = templatefile("${path.module}/policies/team-api.xml", {
     team                = var.team_slug

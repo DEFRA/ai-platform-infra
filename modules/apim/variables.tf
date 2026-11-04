@@ -61,6 +61,28 @@ variable "api_audience_client_id" {
   default     = null
 }
 
+variable "key_tier_paths" {
+  description = "API paths (context.Api.Path) that take a subscription key instead of a token: the Research tier. Every other API takes a validated Entra token, and nothing a team policy sets changes the tier (design E #enforcement, G1)."
+  type        = list(string)
+  default     = ["research"]
+
+  validation {
+    condition     = length(var.key_tier_paths) > 0 && alltrue([for path in var.key_tier_paths : can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", path))]) && length(distinct(var.key_tier_paths)) == length(var.key_tier_paths)
+    error_message = "key_tier_paths lists one or more distinct API paths: lower-case letters, digits and hyphens, so the list is safe to substitute into the policy."
+  }
+}
+
+variable "delegated_paths" {
+  description = "API paths that may take a delegated (idtyp user) token instead of an app-only one: the DEV developer route, reviewed at the gate before DEV. Empty means every OAuth API takes app-only tokens."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for path in var.delegated_paths : can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", path))]) && length(distinct(var.delegated_paths)) == length(var.delegated_paths) && length(setintersection(var.delegated_paths, var.key_tier_paths)) == 0
+    error_message = "delegated_paths lists distinct API paths (lower-case letters, digits and hyphens), none of them a key-tier path."
+  }
+}
+
 variable "names" {
   description = "Child names from the naming module: logger, named values and fragments."
   type = object({
@@ -71,6 +93,7 @@ variable "names" {
     fragments = object({
       authorise     = string
       key_guard     = string
+      team_grant    = string
       whoami        = string
       request_model = string
       backend       = map(string)

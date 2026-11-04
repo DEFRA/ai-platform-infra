@@ -1,36 +1,86 @@
 <fragment>
   <!--
-    aip-authorise: design E request checks 1 to 3, included by the global policy for every
-    OAuth API. The API's own policy sets aipClients (comma-separated client IDs) and
-    aipAccess (access windows) from its named values before <base />; an API that set
-    neither grants no client. Named values hold fixed formats only (GUIDs, ISO 8601 UTC
-    times, status words), because they are substituted into the expressions below.
-    Access window entries: clientId|status|validFrom|expiresAt, separated by ";",
-    where status is active or suspended and expiresAt may be untilRevoked. Times
-    are parsed as DateTimeOffset because APIM does not allow converting a DateTime to UTC.
-    GET /whoami passes steps 1 and 2 only, so a client can check its setup.
+    aip-authorise: the global layer's generic checks G3 to G6 (design E #enforcement,
+    gateway authorisation layers plan), included by the global policy for every OAuth-tier
+    API. It holds no team data: the client list, access window and model belong to the
+    team layer (aip-team-grant), which can only narrow what this layer lets through.
+    Everything is checked on the gateway with no outbound call per request: the signing
+    keys come from the cached OpenID configuration, the token is parsed once, and the
+    cheapest refusals run first. Every 401 carries WWW-Authenticate (RFC 6750).
+    G3: a subscription key on a token path, or an oversized Authorization header.
+    G4: validate-jwt, with a 60 second clock skew.
+    G5: on the parsed token, RS256 only, at most 2 hours from iat to exp, azp present,
+    azpacr present and not 0 (a public client), and idtyp app unless the API's path is on
+    the delegated list (empty unless a DEV developer route is built and reviewed).
+    G6: the emergency deny list, a named value of fixed-format client IDs.
   -->
-  <validate-azure-ad-token tenant-id="{{${tenant_id_named_value}}}" header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="invalid-token" output-token-variable-name="aipToken">
+  <choose>
+    <when condition="@{
+      if (context.Request.Headers.ContainsKey("Ocp-Apim-Subscription-Key")) { return true; }
+      if (context.Request.Url.Query.ContainsKey("subscription-key")) { return true; }
+      return context.Request.Headers.GetValueOrDefault("Authorization", "").Length >= 8192;
+    }">
+      <return-response>
+        <set-status code="401" reason="Unauthorized" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-header name="WWW-Authenticate" exists-action="override">
+          <value>Bearer error="invalid_token"</value>
+        </set-header>
+        <set-body>{"code":"invalid-token"}</set-body>
+      </return-response>
+    </when>
+  </choose>
+  <validate-jwt header-name="Authorization" require-scheme="Bearer" clock-skew="60" failed-validation-httpcode="401" failed-validation-error-message="invalid-token" output-token-variable-name="aipToken">
+    <openid-config url="https://login.microsoftonline.com/{{${tenant_id_named_value}}}/v2.0/.well-known/openid-configuration" />
+    <issuers>
+      <issuer>https://login.microsoftonline.com/{{${tenant_id_named_value}}}/v2.0</issuer>
+    </issuers>
     <audiences>
       <audience>{{${api_audience_named_value}}}</audience>
     </audiences>
     <required-claims>
+      <claim name="tid" match="all">
+        <value>{{${tenant_id_named_value}}}</value>
+      </claim>
       <claim name="ver" match="all">
         <value>2.0</value>
       </claim>
-      <claim name="idtyp" match="all">
-        <value>app</value>
-      </claim>
     </required-claims>
-  </validate-azure-ad-token>
-  <set-variable name="aipClientId" value="@(((Jwt)context.Variables["aipToken"]).Claims.GetValueOrDefault("azp", ""))" />
+  </validate-jwt>
   <choose>
     <when condition="@{
-      var client = (string)context.Variables["aipClientId"];
-      var clients = context.Variables.GetValueOrDefault<string>("aipClients", "").Split(',');
-      var denied = "{{${deny_list_named_value}}}".Split(',');
-      return string.IsNullOrEmpty(client) || !clients.Contains(client) || denied.Contains(client);
+      var jwt = (Jwt)context.Variables["aipToken"];
+      if (jwt.Algorithm != "RS256") { return true; }
+      if (jwt.IssuedAt == null || jwt.ExpirationTime == null) { return true; }
+      var issuedAt = (DateTime)jwt.IssuedAt;
+      var expires = (DateTime)jwt.ExpirationTime;
+      if (expires > issuedAt.AddHours(2)) { return true; }
+      if (jwt.Claims.GetValueOrDefault("azp", "") == "") { return true; }
+      var azpacr = jwt.Claims.GetValueOrDefault("azpacr", "");
+      if (azpacr == "" || azpacr == "0") { return true; }
+      if (jwt.Claims.GetValueOrDefault("idtyp", "") != "app") {
+        var path = context.Api.Path;
+        if (path == "" || !"${delegated_paths}".Split(',').Contains(path)) { return true; }
+      }
+      return false;
     }">
+      <return-response>
+        <set-status code="401" reason="Unauthorized" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-header name="WWW-Authenticate" exists-action="override">
+          <value>Bearer error="invalid_token"</value>
+        </set-header>
+        <set-body>{"code":"invalid-token"}</set-body>
+      </return-response>
+    </when>
+  </choose>
+  <set-variable name="aipClientId" value="@(((Jwt)context.Variables["aipToken"]).Claims.GetValueOrDefault("azp", ""))" />
+  <choose>
+    <when condition="@("{{${deny_list_named_value}}}".Split(',').Contains((string)context.Variables["aipClientId"]))">
       <return-response>
         <set-status code="403" reason="Forbidden" />
         <set-header name="Content-Type" exists-action="override">
@@ -38,35 +88,6 @@
         </set-header>
         <set-body>{"code":"client-not-granted"}</set-body>
       </return-response>
-    </when>
-  </choose>
-  <set-variable name="aipWindow" value="@{
-    var client = (string)context.Variables["aipClientId"];
-    var now = context.Timestamp;
-    foreach (var entry in context.Variables.GetValueOrDefault<string>("aipAccess", "").Split(';')) {
-      var parts = entry.Split('|');
-      if (parts.Length != 4 || parts[0] != client) { continue; }
-      if (parts[1] != "active") { return "grant-suspended"; }
-      if (DateTimeOffset.Parse(parts[2]) > now) { return "grant-suspended"; }
-      if (parts[3] == "untilRevoked") { return "ok"; }
-      if (now >= DateTimeOffset.Parse(parts[3])) { return "grant-expired"; }
-      return "ok";
-    }
-    return "grant-suspended";
-  }" />
-  <choose>
-    <when condition="@(context.Operation.Id != "whoami")">
-      <choose>
-        <when condition="@((string)context.Variables["aipWindow"] != "ok")">
-          <return-response>
-            <set-status code="403" reason="Forbidden" />
-            <set-header name="Content-Type" exists-action="override">
-              <value>application/json</value>
-            </set-header>
-            <set-body>@("{\"code\":\"" + (string)context.Variables["aipWindow"] + "\"}")</set-body>
-          </return-response>
-        </when>
-      </choose>
     </when>
   </choose>
 </fragment>

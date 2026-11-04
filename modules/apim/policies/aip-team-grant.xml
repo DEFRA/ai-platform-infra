@@ -1,0 +1,64 @@
+<fragment>
+  <!--
+    aip-team-grant: the team layer's checks T1 and T2 (design E #enforcement), included by a
+    team API's policy after <base />, so the global layer has already authenticated the call
+    and a team policy can only narrow access. The API's policy sets aipClients
+    (comma-separated client IDs) and aipAccess (access windows) from its named values
+    before including this; an API that set neither grants no client. Named values hold
+    fixed formats only (GUIDs, ISO 8601 UTC times, status words), because they are
+    substituted into the expressions. The model check (T4) and the limits (T5) are generated
+    in the API's own policy, which needs the team's routing; T3 (refusing a secret-based
+    token) waits for design E verify 10.
+    T1: aipClientId, set by the global layer from azp, is on the team's client list.
+    T2: the client's access window is active and the request time, context.Timestamp, is at
+    or after validFrom and before expiresAt, unless the entry is untilRevoked.
+    Access window entries: clientId|status|validFrom|expiresAt, separated by ";",
+    where status is active or suspended and expiresAt may be untilRevoked. Times
+    are parsed as DateTimeOffset because APIM does not allow converting a DateTime to UTC.
+    GET /whoami passes T1 only, so a client can check its setup.
+  -->
+  <choose>
+    <when condition="@{
+      var client = (string)context.Variables["aipClientId"];
+      var clients = context.Variables.GetValueOrDefault<string>("aipClients", "").Split(',');
+      return string.IsNullOrEmpty(client) || !clients.Contains(client);
+    }">
+      <return-response>
+        <set-status code="403" reason="Forbidden" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-body>{"code":"client-not-granted"}</set-body>
+      </return-response>
+    </when>
+  </choose>
+  <set-variable name="aipWindow" value="@{
+    var client = (string)context.Variables["aipClientId"];
+    var now = context.Timestamp;
+    foreach (var entry in context.Variables.GetValueOrDefault<string>("aipAccess", "").Split(';')) {
+      var parts = entry.Split('|');
+      if (parts.Length != 4 || parts[0] != client) { continue; }
+      if (parts[1] != "active") { return "grant-suspended"; }
+      if (DateTimeOffset.Parse(parts[2]) > now) { return "grant-suspended"; }
+      if (parts[3] == "untilRevoked") { return "ok"; }
+      if (now >= DateTimeOffset.Parse(parts[3])) { return "grant-expired"; }
+      return "ok";
+    }
+    return "grant-suspended";
+  }" />
+  <choose>
+    <when condition="@(context.Operation.Id != "whoami")">
+      <choose>
+        <when condition="@((string)context.Variables["aipWindow"] != "ok")">
+          <return-response>
+            <set-status code="403" reason="Forbidden" />
+            <set-header name="Content-Type" exists-action="override">
+              <value>application/json</value>
+            </set-header>
+            <set-body>@("{\"code\":\"" + (string)context.Variables["aipWindow"] + "\"}")</set-body>
+          </return-response>
+        </when>
+      </choose>
+    </when>
+  </choose>
+</fragment>

@@ -127,11 +127,12 @@ resource "azurerm_api_management_policy_fragment" "authorise" {
   name              = var.names.fragments.authorise
   api_management_id = azurerm_api_management.this.id
   format            = "rawxml"
-  description       = "Shared OAuth checks for every team API: token, client list, deny list and access window (design E)."
+  description       = "Generic OAuth checks for every token API, G3 to G6: header guards, validate-jwt, token claims and the deny list. Holds no team data (design E)."
   value = templatefile("${path.module}/policies/aip-authorise.xml", {
     tenant_id_named_value    = var.names.tenant_id
     api_audience_named_value = var.names.api_audience
     deny_list_named_value    = var.names.deny_list
+    delegated_paths          = join(",", var.delegated_paths)
   })
 
   depends_on = [
@@ -146,8 +147,9 @@ resource "azurerm_api_management_policy_fragment" "authorise" {
 locals {
   shared_fragments = {
     key_guard     = { name = var.names.fragments.key_guard, file = "aip-key-guard.xml", description = "Key tier guard: refuses a subscription past its end date (design C)." }
+    team_grant    = { name = var.names.fragments.team_grant, file = "aip-team-grant.xml", description = "Team layer T1 and T2: the caller is on the team's client list and its access window is open. A team policy only narrows access (design E)." }
     whoami        = { name = var.names.fragments.whoami, file = "aip-whoami.xml", description = "GET /whoami for every team API." }
-    request_model = { name = var.names.fragments.request_model, file = "aip-request-model.xml", description = "Refuses an unauthorised call, then reads the requested catalogue slug." }
+    request_model = { name = var.names.fragments.request_model, file = "aip-request-model.xml", description = "Refuses an unauthenticated call, then reads the requested catalogue slug." }
     backend_foundry = {
       name        = var.names.fragments.backend.foundry
       file        = "aip-backend-foundry.xml"
@@ -166,12 +168,14 @@ resource "azurerm_api_management_policy_fragment" "shared" {
   value             = file("${path.module}/policies/${each.value.file}")
 }
 
-# The global guard: every API is authorised here, keyed on the credential tier
-# its own policy declared before <base /> (design C #model-access).
+# The global layer: every API is authenticated here, generically, with the tier
+# taken from its path (design E #enforcement). The global policy is replaced only
+# after the fragments it includes exist.
 resource "azurerm_api_management_policy" "global" {
   api_management_id = azurerm_api_management.this.id
   xml_content = templatefile("${path.module}/policies/global.xml", {
     authorise_fragment = azurerm_api_management_policy_fragment.authorise.name
     key_guard_fragment = azurerm_api_management_policy_fragment.shared["key_guard"].name
+    key_tier_paths     = join(",", var.key_tier_paths)
   })
 }

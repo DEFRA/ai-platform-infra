@@ -91,6 +91,20 @@ run "names_a_github_environment_credential_from_the_repository_and_environment" 
   }
 }
 
+run "names_the_gateway_policy_fragments" {
+  command = plan
+
+  assert {
+    condition     = output.fragments.authorise == "aip-authorise" && output.fragments.key_guard == "aip-key-guard" && output.fragments.team_grant == "aip-team-grant"
+    error_message = "the global layer's fragments and the team layer's fragment are named {service}-{purpose}"
+  }
+
+  assert {
+    condition     = output.fragments.whoami == "aip-whoami" && output.fragments.request_model == "aip-request-model" && output.fragments.backend.foundry == "aip-backend-foundry"
+    error_message = "the shared steps keep their names, so the team policies that include them are unchanged"
+  }
+}
+
 run "lists_the_managed_identity_among_the_ccoe_gaps" {
   command = plan
 

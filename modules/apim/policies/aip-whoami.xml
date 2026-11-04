@@ -1,7 +1,8 @@
 <fragment>
   <!--
     aip-whoami: GET /whoami answers from the variables the API's policy and the global
-    guard set, so a client can check its setup without reaching a model.
+    layer set (aipTier, aipClientId, aipWindow), so a client can check its setup without
+    reaching a model.
   -->
   <choose>
     <when condition="@(context.Operation.Id == "whoami")">
@@ -14,7 +15,7 @@
           var granted = context.Variables.GetValueOrDefault<string>("aipGranted", "");
           var body = new JObject();
           body["team"] = context.Variables.GetValueOrDefault<string>("aipTeam", "");
-          body["credentialType"] = context.Variables.GetValueOrDefault<string>("aipCredentialType", "oauth");
+          body["credentialType"] = context.Variables.GetValueOrDefault<string>("aipTier", "oauth");
           body["clientId"] = context.Variables.GetValueOrDefault<string>("aipClientId", "");
           body["accessWindow"] = context.Variables.GetValueOrDefault<string>("aipWindow", "");
           body["allowedDeployments"] = JArray.FromObject(granted.Split(',').Where(slug => slug != ""));
