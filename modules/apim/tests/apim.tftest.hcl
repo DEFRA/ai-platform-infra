@@ -284,6 +284,43 @@ run "shared_fragments" {
     condition     = strcontains(azurerm_api_management_policy_fragment.shared["whoami"].value, "GetValueOrDefault<string>(\"aipTier\", \"oauth\")") && !strcontains(azurerm_api_management_policy_fragment.shared["whoami"].value, "aipCredentialType")
     error_message = "whoami reports the tier the global layer took from the path, not one a team declared"
   }
+
+  # INF-1: whoami fails closed like a model call. A team policy that does not include the
+  # team layer (an old one, between the platform and tenants applies) never marks the
+  # caller, so whoami refuses it before it names the team or its grants.
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_policy_fragment.shared["whoami"].value, "<when condition=\"@(!context.Variables.ContainsKey(\"aipCallerGranted\"))\">") &&
+      strcontains(azurerm_api_management_policy_fragment.shared["whoami"].value, "<set-body>{\"code\":\"client-not-granted\"}</set-body>") &&
+      index(split("\n", azurerm_api_management_policy_fragment.shared["whoami"].value), "        <when condition=\"@(!context.Variables.ContainsKey(\"aipCallerGranted\"))\">") <
+      index(split("\n", azurerm_api_management_policy_fragment.shared["whoami"].value), "      <return-response>")
+    )
+    error_message = "whoami returns 403 client-not-granted before it builds its answer, unless a lower layer marked the caller"
+  }
+
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_policy_fragment.shared["team_grant"].value, "<set-variable name=\"aipCallerGranted\" value=\"true\" />") &&
+      index(split("\n", azurerm_api_management_policy_fragment.shared["team_grant"].value), "  <set-variable name=\"aipCallerGranted\" value=\"true\" />") > index(split("\n", azurerm_api_management_policy_fragment.shared["team_grant"].value), "        <set-body>{\"code\":\"client-not-granted\"}</set-body>")
+    )
+    error_message = "the team layer marks the caller only after T1 refused an unlisted client"
+  }
+
+  # INF-2 (AC15): a token on the Research path is refused by policy, and a call there is a key or a token, never both.
+  assert {
+    condition = (
+      strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "<when condition=\"@(context.Request.Headers.ContainsKey(\"Authorization\"))\">") &&
+      strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "{\"code\":\"invalid-credential\"}") &&
+      index(split("\n", azurerm_api_management_policy_fragment.shared["key_guard"].value), "    <when condition=\"@(context.Request.Headers.ContainsKey(\"Authorization\"))\">") <
+      index(split("\n", azurerm_api_management_policy_fragment.shared["key_guard"].value), "        <set-body>{\"code\":\"subscription-expired\"}</set-body>")
+    )
+    error_message = "the key guard refuses any Authorization header with 401 invalid-credential before it checks the subscription"
+  }
+
+  assert {
+    condition     = strcontains(azurerm_api_management_policy_fragment.shared["key_guard"].value, "<set-variable name=\"aipCallerGranted\" value=\"true\" />") && index(split("\n", azurerm_api_management_policy_fragment.shared["key_guard"].value), "  <set-variable name=\"aipCallerGranted\" value=\"true\" />") > index(split("\n", azurerm_api_management_policy_fragment.shared["key_guard"].value), "        <set-body>{\"code\":\"subscription-expired\"}</set-body>")
+    error_message = "the key guard marks the caller only after the subscription passed, so research whoami still answers"
+  }
 }
 
 run "key_tier_and_delegated_paths_are_configurable" {

@@ -4,7 +4,21 @@
     subscription of an API that requires one; this refuses a subscription past the end
     date the Portal API sets at issue and renewal (design C #model-access), and any call
     that somehow carries none. The subscription is the caller for the steps that follow.
+    A bearer token on this path is refused outright (401 invalid-credential), so a call
+    carries a key or a token, never both, and a token alone never reaches a model: API
+    Management also refuses a call with no key because the API requires a subscription.
   -->
+  <choose>
+    <when condition="@(context.Request.Headers.ContainsKey("Authorization"))">
+      <return-response>
+        <set-status code="401" reason="Unauthorized" />
+        <set-header name="Content-Type" exists-action="override">
+          <value>application/json</value>
+        </set-header>
+        <set-body>{"code":"invalid-credential"}</set-body>
+      </return-response>
+    </when>
+  </choose>
   <choose>
     <when condition="@(context.Subscription == null || (context.Subscription.EndDate != null && context.Subscription.EndDate <= context.Timestamp))">
       <return-response>
@@ -17,4 +31,5 @@
     </when>
   </choose>
   <set-variable name="aipClientId" value="@(context.Subscription.Id)" />
+  <set-variable name="aipCallerGranted" value="true" />
 </fragment>

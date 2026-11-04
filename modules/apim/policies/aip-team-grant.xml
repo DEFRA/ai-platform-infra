@@ -9,7 +9,8 @@
     substituted into the expressions. The model check (T4) and the limits (T5) are generated
     in the API's own policy, which needs the team's routing; T3 (refusing a secret-based
     token) waits for design E verify 10.
-    T1: aipClientId, set by the global layer from azp, is on the team's client list.
+    T1: aipClientId, set by the global layer from azp, is on the team's client list; the
+    caller is then marked (aipCallerGranted), which aip-whoami requires.
     T2: the client's access window is active and the request time, context.Timestamp, is at
     or after validFrom and before expiresAt, unless the entry is untilRevoked.
     Access window entries: clientId|status|validFrom|expiresAt, separated by ";",
@@ -32,6 +33,7 @@
       </return-response>
     </when>
   </choose>
+  <set-variable name="aipCallerGranted" value="true" />
   <set-variable name="aipWindow" value="@{
     var client = (string)context.Variables["aipClientId"];
     var now = context.Timestamp;
