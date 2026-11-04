@@ -31,7 +31,11 @@ output "named_values" {
 output "fragments" {
   description = "Platform policy fragments in API Management: the guards the global policy includes, and the shared steps every team API includes (design C #model-access)."
   value = {
-    authorise     = "${local.service}-authorise"
+    # The generic checks are replaced by a new name, never updated in place: the previous
+    # fragment (aip-authorise) holds the team checks the live global policy relies on, and it
+    # stays until the global policy and its gate switch to this one (platform apply, then
+    # tenants). A change that removes a check from this fragment needs the next version.
+    authorise     = "${local.service}-authorise-v2"
     key_guard     = "${local.service}-key-guard"
     team_grant    = "${local.service}-team-grant"
     whoami        = "${local.service}-whoami"

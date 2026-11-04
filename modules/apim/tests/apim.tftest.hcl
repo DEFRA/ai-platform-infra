@@ -31,7 +31,7 @@ variables {
     api_audience = "aip-api-audience"
     deny_list    = "aip-deny-list"
     fragments = {
-      authorise     = "aip-authorise"
+      authorise     = "aip-authorise-v2"
       key_guard     = "aip-key-guard"
       team_grant    = "aip-team-grant"
       whoami        = "aip-whoami"
@@ -51,9 +51,9 @@ run "global_layer_authenticates_by_path_tier" {
       strcontains(azurerm_api_management_policy.global.xml_content, "<set-variable name=\"aipTier\" value=\"@(\"research\".Split(',').Contains(context.Api.Path) ? \"key\" : \"oauth\")\" />") &&
       strcontains(azurerm_api_management_policy.global.xml_content, "<when condition=\"@((string)context.Variables[\"aipTier\"] == \"key\")\">") &&
       strcontains(azurerm_api_management_policy.global.xml_content, "<include-fragment fragment-id=\"aip-key-guard\" />") &&
-      strcontains(azurerm_api_management_policy.global.xml_content, "<include-fragment fragment-id=\"aip-authorise\" />")
+      strcontains(azurerm_api_management_policy.global.xml_content, "<include-fragment fragment-id=\"aip-authorise-v2\" />")
     )
-    error_message = "the global policy takes the tier from context.Api.Path and runs the key guard for the key tier and aip-authorise for everything else"
+    error_message = "the global policy takes the tier from context.Api.Path and runs the key guard for the key tier and the versioned aip-authorise-v2 for everything else"
   }
 
   assert {
@@ -75,7 +75,7 @@ run "global_layer_authenticates_by_path_tier" {
     condition = (
       strcontains(azurerm_api_management_policy.global.xml_content, "<when condition=\"@(!context.Variables.ContainsKey(\"aipGrantedCall\"))\">") &&
       strcontains(azurerm_api_management_policy.global.xml_content, "<set-body>{\"code\":\"client-not-granted\"}</set-body>") &&
-      index(split("\n", azurerm_api_management_policy.global.xml_content), "      <when condition=\"@(!context.Variables.ContainsKey(\"aipGrantedCall\"))\">") < index(split("\n", azurerm_api_management_policy.global.xml_content), "    <forward-request timeout=\"300\" buffer-response=\"false\" />")
+      index(split("\n", azurerm_api_management_policy.global.xml_content), "      <when condition=\"@(!context.Variables.ContainsKey(\"aipGrantedCall\"))\">") < index(split("\n", azurerm_api_management_policy.global.xml_content), "        <forward-request timeout=\"300\" buffer-response=\"false\" />")
     )
     error_message = "the global backend refuses with 403 client-not-granted, before forward-request, any request no lower layer marked granted"
   }
@@ -83,6 +83,14 @@ run "global_layer_authenticates_by_path_tier" {
   assert {
     condition     = length(regexall("<forward-request ", azurerm_api_management_policy.global.xml_content)) == 1 && strcontains(azurerm_api_management_policy.global.xml_content, "<forward-request timeout=\"300\" buffer-response=\"false\" />")
     error_message = "forwarding is configured once, globally"
+  }
+
+  # Review finding on PR 42 (global.xml:30): API Management allows one policy element directly
+  # inside <backend> (https://learn.microsoft.com/azure/api-management/set-edit-policies), so the
+  # gate is one <choose> whose <otherwise> holds the only <forward-request>.
+  assert {
+    condition     = length(regexall("(?s)<backend>\\s*<!--.*?-->\\s*<choose>\\s*<when condition=\"@\\(!context\\.Variables\\.ContainsKey\\(\"aipGrantedCall\"\\)\\)\">.*?</when>\\s*<otherwise>\\s*<forward-request timeout=\"300\" buffer-response=\"false\" />\\s*</otherwise>\\s*</choose>\\s*</backend>", azurerm_api_management_policy.global.xml_content)) == 1
+    error_message = "the global backend is a single <choose>: the refusal in <when>, the one <forward-request> in <otherwise>, and nothing else directly inside <backend>"
   }
 
   # A validate-jwt failure runs the global on-error (design E verify 11), which adds the challenge.
@@ -424,7 +432,7 @@ run "refuses_names_without_the_foundry_backend_fragment" {
       api_audience = "aip-api-audience"
       deny_list    = "aip-deny-list"
       fragments = {
-        authorise     = "aip-authorise"
+        authorise     = "aip-authorise-v2"
         key_guard     = "aip-key-guard"
         team_grant    = "aip-team-grant"
         whoami        = "aip-whoami"

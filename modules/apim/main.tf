@@ -140,6 +140,14 @@ resource "azurerm_api_management_policy_fragment" "authorise" {
     azurerm_api_management_named_value.api_audience,
     azurerm_api_management_named_value.deny_list,
   ]
+
+  # The name is versioned (naming module), so a new version is a replacement. The new
+  # fragment is created first, the global policy then switches to it (it reads this
+  # resource's name), and only then is the previous version deleted: no step leaves the
+  # gateway without the checks the live global policy includes.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # The fragments the global policy and every team API include; each file is

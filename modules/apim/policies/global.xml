@@ -25,7 +25,9 @@
     <!--
       The gate: only a request a lower layer marked granted (aipGrantedCall, set where the
       team's client, window and model checks pass) is forwarded, so an API with no team
-      policy authenticates and still reaches no model.
+      policy authenticates and still reaches no model. API Management allows one policy
+      element directly inside <backend>, so the refusal and the forward are the two branches
+      of one <choose>.
     -->
     <choose>
       <when condition="@(!context.Variables.ContainsKey("aipGrantedCall"))">
@@ -37,8 +39,10 @@
           <set-body>{"code":"client-not-granted"}</set-body>
         </return-response>
       </when>
+      <otherwise>
+        <forward-request timeout="300" buffer-response="false" />
+      </otherwise>
     </choose>
-    <forward-request timeout="300" buffer-response="false" />
   </backend>
   <outbound>
     <set-header name="X-Powered-By" exists-action="delete" />
