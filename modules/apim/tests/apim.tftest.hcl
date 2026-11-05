@@ -137,6 +137,11 @@ run "authorise_fragment_is_generic_and_validates_the_token_in_full" {
   }
 
   assert {
+    condition     = length(regexall("(?s)<openid-config [^>]*/>\\s*<audiences>.*</audiences>\\s*<issuers>.*</issuers>\\s*<required-claims>", azurerm_api_management_policy_fragment.authorise.value)) == 1
+    error_message = "validate-jwt children must be in API Management's schema order (openid-config, audiences, issuers, required-claims): audiences after issuers made the v0.11.1 apply fail with 'invalid child element audiences'"
+  }
+
+  assert {
     condition = (
       strcontains(azurerm_api_management_policy_fragment.authorise.value, "<claim name=\"tid\" match=\"all\">\n        <value>{{aip-tenant-id}}</value>") &&
       strcontains(azurerm_api_management_policy_fragment.authorise.value, "<claim name=\"ver\" match=\"all\">\n        <value>2.0</value>")
