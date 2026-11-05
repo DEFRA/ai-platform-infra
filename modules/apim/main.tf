@@ -141,13 +141,9 @@ resource "azurerm_api_management_policy_fragment" "authorise" {
     azurerm_api_management_named_value.deny_list,
   ]
 
-  # The name is versioned (naming module), so a new version is a replacement. The new
-  # fragment is created first, the global policy then switches to it (it reads this
-  # resource's name), and only then is the previous version deleted: no step leaves the
-  # gateway without the checks the live global policy includes.
-  lifecycle {
-    create_before_destroy = true
-  }
+  # The name is ForceNew in azurerm, so a rename replaces the fragment and the apply workflow
+  # refuses any destroy (INF-6). The generic checks update this fragment in place, then the
+  # global policy (which reads this resource's name) is updated with the gate.
 }
 
 # The fragments the global policy and every team API include; each file is

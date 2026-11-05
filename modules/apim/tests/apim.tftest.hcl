@@ -31,7 +31,7 @@ variables {
     api_audience = "aip-api-audience"
     deny_list    = "aip-deny-list"
     fragments = {
-      authorise     = "aip-authorise-v2"
+      authorise     = "aip-authorise"
       key_guard     = "aip-key-guard"
       team_grant    = "aip-team-grant"
       whoami        = "aip-whoami"
@@ -51,9 +51,9 @@ run "global_layer_authenticates_by_path_tier" {
       strcontains(azurerm_api_management_policy.global.xml_content, "<set-variable name=\"aipTier\" value=\"@(\"research\".Split(',').Contains(context.Api.Path) ? \"key\" : \"oauth\")\" />") &&
       strcontains(azurerm_api_management_policy.global.xml_content, "<when condition=\"@((string)context.Variables[\"aipTier\"] == \"key\")\">") &&
       strcontains(azurerm_api_management_policy.global.xml_content, "<include-fragment fragment-id=\"aip-key-guard\" />") &&
-      strcontains(azurerm_api_management_policy.global.xml_content, "<include-fragment fragment-id=\"aip-authorise-v2\" />")
+      strcontains(azurerm_api_management_policy.global.xml_content, "<include-fragment fragment-id=\"aip-authorise\" />")
     )
-    error_message = "the global policy takes the tier from context.Api.Path and runs the key guard for the key tier and the versioned aip-authorise-v2 for everything else"
+    error_message = "the global policy takes the tier from context.Api.Path and runs the key guard for the key tier and aip-authorise for everything else"
   }
 
   assert {
@@ -108,6 +108,17 @@ run "global_layer_authenticates_by_path_tier" {
   assert {
     condition     = strcontains(azurerm_api_management_policy.global.xml_content, "<outbound>") && strcontains(azurerm_api_management_policy.global.xml_content, "<set-header name=\"X-Powered-By\" exists-action=\"delete\" />")
     error_message = "response header hygiene stays in the global policy"
+  }
+}
+
+run "authorise_fragment_keeps_the_released_name" {
+  command = plan
+
+  # INF-6: a policy fragment's name is ForceNew and the apply workflow refuses any destroy, so
+  # the generic checks update the live aip-authorise in place.
+  assert {
+    condition     = azurerm_api_management_policy_fragment.authorise.name == "aip-authorise"
+    error_message = "the generic checks stay in the fragment aip-authorise released in v0.10.3; a new name replaces it"
   }
 }
 
@@ -432,7 +443,7 @@ run "refuses_names_without_the_foundry_backend_fragment" {
       api_audience = "aip-api-audience"
       deny_list    = "aip-deny-list"
       fragments = {
-        authorise     = "aip-authorise-v2"
+        authorise     = "aip-authorise"
         key_guard     = "aip-key-guard"
         team_grant    = "aip-team-grant"
         whoami        = "aip-whoami"

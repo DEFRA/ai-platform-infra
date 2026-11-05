@@ -95,15 +95,16 @@ run "names_the_gateway_policy_fragments" {
   command = plan
 
   assert {
-    condition     = output.fragments.authorise == "aip-authorise-v2" && output.fragments.key_guard == "aip-key-guard" && output.fragments.team_grant == "aip-team-grant"
-    error_message = "the global layer's fragments and the team layer's fragment are named {service}-{purpose}, and the generic checks are versioned"
+    condition     = output.fragments.authorise == "aip-authorise" && output.fragments.key_guard == "aip-key-guard" && output.fragments.team_grant == "aip-team-grant"
+    error_message = "the global layer's fragments and the team layer's fragment are named {service}-{purpose}"
   }
 
-  # Review finding on PR 42 (aip-authorise.xml:83): the live fragment is named aip-authorise and
-  # the old global policy includes it, so the replacement must be a new name, never an in-place update.
+  # INF-6 (platform apply refused on v0.11.0): the name of an API Management policy fragment is
+  # ForceNew, so renaming the live aip-authorise plans a destroy, and the apply workflow refuses
+  # any destroy. The content changes in place; the name stays as released in v0.10.3.
   assert {
-    condition     = output.fragments.authorise != "aip-authorise"
-    error_message = "the generic checks must not reuse the live fragment name: an in-place update would drop the team checks before the global gate exists"
+    condition     = output.fragments.authorise == "aip-authorise" && alltrue([for name in [output.fragments.authorise, output.fragments.key_guard, output.fragments.team_grant, output.fragments.whoami, output.fragments.request_model, output.fragments.backend.foundry] : !can(regex("-v[0-9]+$", name))])
+    error_message = "a released fragment keeps its name (a rename is a replacement); none carries a version suffix"
   }
 
   assert {
