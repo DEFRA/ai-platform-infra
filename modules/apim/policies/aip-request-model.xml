@@ -1,11 +1,11 @@
 <fragment>
   <!--
-    aip-request-model: refuses to route anything the global guard has not authorised
+    aip-request-model: refuses to route anything the global layer has not authenticated
     (an API policy that lost its <base />), then reads the catalogue slug the caller asks
     for, from the deployment segment of the path or the body's model field.
   -->
   <choose>
-    <when condition="@(!context.Variables.ContainsKey("aipAuthorised"))">
+    <when condition="@(!context.Variables.ContainsKey("aipAuthenticated"))">
       <return-response>
         <set-status code="401" reason="Unauthorized" />
         <set-header name="Content-Type" exists-action="override">

@@ -1,11 +1,18 @@
 <policies>
   <inbound>
-    <set-variable name="aipTeam" value="${team}" />
-    <set-variable name="aipCredentialType" value="${credential_type}" />%{ if credential_type == "oauth" }
-    <set-variable name="aipClients" value="{{${clients_named_value}}}" />
-    <set-variable name="aipAccess" value="{{${access_named_value}}}" />%{ endif }
-    <set-variable name="aipGranted" value="${granted}" />
+    <!--
+      The global layer authenticates the call first (<base />); this policy then only narrows
+      it: the team's data, T1 and T2 in aip-team-grant (OAuth teams; the key API's
+      subscription is its caller), the model (T4) and the limits (T5).
+      Nothing here is read by the global layer, and the call is marked granted only where
+      a requested model is on the team's list.
+    -->
     <base />
+    <set-variable name="aipTeam" value="${team}" />%{ if credential_type == "oauth" }
+    <set-variable name="aipClients" value="{{${clients_named_value}}}" />
+    <set-variable name="aipAccess" value="{{${access_named_value}}}" />
+    <include-fragment fragment-id="${fragments.team_grant}" />%{ endif }
+    <set-variable name="aipGranted" value="${granted}" />
     <include-fragment fragment-id="${fragments.whoami}" />%{ if credential_type == "oauth" }
     <include-fragment fragment-id="${fragments.request_model}" />%{ else }
     <!-- Research: nothing translates the name; the caller's deployment name is checked against the allow-list and forwarded as sent. -->
@@ -21,6 +28,7 @@
     <choose>
 %{ for route in routes ~}
       <when condition="@((string)context.Variables["aipRequested"] == "${route.match}")">
+        <set-variable name="aipGrantedCall" value="true" />
         <set-variable name="aipDeployment" value="${route.forward}" />
         <set-variable name="aipHosting" value="${route.hosting}" />
         <set-backend-service backend-id="${route.backend_id}" />

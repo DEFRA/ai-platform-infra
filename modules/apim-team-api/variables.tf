@@ -70,8 +70,9 @@ variable "named_values" {
 }
 
 variable "fragments" {
-  description = "The platform's shared fragments: whoami, request_model and the backend fragment per hosting platform (design C #model-access)."
+  description = "The platform's shared fragments: team_grant, whoami, request_model and the backend fragment per hosting platform (design C #model-access)."
   type = object({
+    team_grant    = string
     whoami        = string
     request_model = string
     backend       = map(string)

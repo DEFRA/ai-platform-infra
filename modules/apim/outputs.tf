@@ -18,6 +18,7 @@ output "principal_id" {
 output "fragments" {
   description = "The shared fragments a team API includes, and the backend fragment per hosting platform."
   value = {
+    team_grant    = azurerm_api_management_policy_fragment.shared["team_grant"].name
     whoami        = azurerm_api_management_policy_fragment.shared["whoami"].name
     request_model = azurerm_api_management_policy_fragment.shared["request_model"].name
     backend = {

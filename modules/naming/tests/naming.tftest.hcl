@@ -91,6 +91,27 @@ run "names_a_github_environment_credential_from_the_repository_and_environment" 
   }
 }
 
+run "names_the_gateway_policy_fragments" {
+  command = plan
+
+  assert {
+    condition     = output.fragments.authorise == "aip-authorise-v2" && output.fragments.key_guard == "aip-key-guard" && output.fragments.team_grant == "aip-team-grant"
+    error_message = "the global layer's fragments and the team layer's fragment are named {service}-{purpose}, and the generic checks are versioned"
+  }
+
+  # Review finding on PR 42 (aip-authorise.xml:83): the live fragment is named aip-authorise and
+  # the old global policy includes it, so the replacement must be a new name, never an in-place update.
+  assert {
+    condition     = output.fragments.authorise != "aip-authorise"
+    error_message = "the generic checks must not reuse the live fragment name: an in-place update would drop the team checks before the global gate exists"
+  }
+
+  assert {
+    condition     = output.fragments.whoami == "aip-whoami" && output.fragments.request_model == "aip-request-model" && output.fragments.backend.foundry == "aip-backend-foundry"
+    error_message = "the shared steps keep their names, so the team policies that include them are unchanged"
+  }
+}
+
 run "lists_the_managed_identity_among_the_ccoe_gaps" {
   command = plan
 

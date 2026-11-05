@@ -42,6 +42,7 @@ variable "platform" {
       primary         = bool
     }))
     fragments = object({
+      team_grant    = string
       whoami        = string
       request_model = string
       backend       = map(string)

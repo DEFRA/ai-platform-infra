@@ -44,6 +44,31 @@ const ALLOWED_DATE_TIME_MEMBERS = new Set([
   'Year'
 ])
 
+// The Jwt type and context.LastError members a policy expression may read
+// (same page, checked 4 November 2026).
+const ALLOWED_JWT_MEMBERS = new Set([
+  'Algorithm',
+  'Audiences',
+  'Claims',
+  'ExpirationTime',
+  'Id',
+  'IssuedAt',
+  'Issuer',
+  'NotBefore',
+  'Subject',
+  'Type'
+])
+
+const ALLOWED_LAST_ERROR_MEMBERS = new Set([
+  'Message',
+  'Path',
+  'PolicyId',
+  'Reason',
+  'Scope',
+  'Section',
+  'Source'
+])
+
 function policyFiles() {
   return readdirSync(INFRA_DIR, { recursive: true })
     .filter((path) => path.endsWith('.xml') && !IGNORED.test(path))
@@ -70,6 +95,42 @@ describe('policy expressions use only what API Management allows', () => {
     )
 
     expect(forbidden).toEqual([])
+  })
+
+  test('the gateway policy reads only Jwt members that API Management allows', () => {
+    const unknown = files.flatMap(({ name, source }) =>
+      [...source.matchAll(/\bjwt\.(\w+)/g)]
+        .filter(([, member]) => !ALLOWED_JWT_MEMBERS.has(member))
+        .map(([, member]) => `${name}: jwt.${member}`)
+    )
+
+    expect(unknown).toEqual([])
+  })
+
+  test('the gateway policy checks the token through the Jwt members design E verify 11 names', () => {
+    const authorise = files.find(
+      ({ name }) =>
+        name.replaceAll('\\', '/') === 'modules/apim/policies/aip-authorise.xml'
+    )
+
+    for (const member of [
+      'Algorithm',
+      'IssuedAt',
+      'ExpirationTime',
+      'Claims'
+    ]) {
+      expect(authorise.source).toContain(`jwt.${member}`)
+    }
+  })
+
+  test('the gateway policy reads only LastError members that API Management allows', () => {
+    const unknown = files.flatMap(({ name, source }) =>
+      [...source.matchAll(/\bcontext\.LastError\??\.(\w+)/g)]
+        .filter(([, member]) => !ALLOWED_LAST_ERROR_MEMBERS.has(member))
+        .map(([, member]) => `${name}: context.LastError.${member}`)
+    )
+
+    expect(unknown).toEqual([])
   })
 
   test('every static DateTime member is on the allowed list', () => {
