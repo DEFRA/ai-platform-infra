@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.1...v0.11.2) (2026-11-05)
+
+
+### Bug Fixes
+
+* **apim:** put validate-jwt audiences before issuers ([#46](https://github.com/DEFRA/ai-platform-infra/issues/46)) ([51edcc1](https://github.com/DEFRA/ai-platform-infra/commit/51edcc1f5d7dd31f645aa3d679a58e3bde5d2549))
+
 ## [0.11.1](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.0...v0.11.1) (2026-11-05)
 
 
