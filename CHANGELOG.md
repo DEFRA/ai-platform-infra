@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.0...v0.11.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **apim:** keep the aip-authorise fragment name so the apply has no destroy ([#44](https://github.com/DEFRA/ai-platform-infra/issues/44)) ([e5bb967](https://github.com/DEFRA/ai-platform-infra/commit/e5bb967c25174a97cccae4eea906cabc8a4b88c6))
+
 ## [0.11.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.3...v0.11.0) (2026-11-05)
 
 
