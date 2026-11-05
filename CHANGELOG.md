@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.3...v0.11.0) (2026-11-05)
+
+
+### Features
+
+* APIM gateway authorisation layers (HVE 42) ([#42](https://github.com/DEFRA/ai-platform-infra/issues/42)) ([88d1d9f](https://github.com/DEFRA/ai-platform-infra/commit/88d1d9f89b6457d5304b4be40630d8df2102e44d))
+
 ## [0.10.3](https://github.com/DEFRA/ai-platform-infra/compare/v0.10.2...v0.10.3) (2026-10-30)
 
 
