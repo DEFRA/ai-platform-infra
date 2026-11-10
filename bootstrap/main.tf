@@ -246,9 +246,11 @@ resource "azuread_application_federated_identity_credential" "deploy" {
 # nothing else; a third repository is refused by the oidc_subject_prefixes
 # validation.
 locals {
+  # Keyed `{repository}/environment`, as before, so the two credentials that
+  # stay keep their addresses in state and only the `/events` ones are destroyed.
   events_credentials = {
     for repository in keys(var.oidc_subject_prefixes) :
-    repository => {
+    "${repository}/environment" => {
       repository  = repository
       environment = local.environment
     }

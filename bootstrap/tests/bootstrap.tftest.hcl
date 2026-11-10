@@ -266,6 +266,11 @@ run "federates_the_events_identity_to_exactly_two_subjects" {
   }
 
   assert {
+    condition     = toset(keys(azurerm_federated_identity_credential.events)) == toset(["ai-platform-tenants/environment", "ai-platform-deployments/environment"])
+    error_message = "the retained credentials keep their addresses in state, so only the retired ones are destroyed"
+  }
+
+  assert {
     condition = alltrue([
       for credential in azurerm_federated_identity_credential.events :
       credential.issuer == "https://token.actions.githubusercontent.com" && toset(credential.audience) == toset(["api://AzureADTokenExchange"]) && credential.user_assigned_identity_id == azurerm_user_assigned_identity.events.id
