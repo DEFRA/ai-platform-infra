@@ -249,22 +249,20 @@ run "creates_the_events_identity_in_the_state_resource_group" {
   }
 }
 
-run "federates_the_events_identity_to_exactly_four_subjects" {
+run "federates_the_events_identity_to_exactly_two_subjects" {
   command = apply
 
   assert {
     condition = toset(output.events_federated_subjects) == toset([
       "repo:DEFRA@1/ai-platform-tenants@2:environment:infradev",
-      "repo:DEFRA@1/ai-platform-tenants@2:environment:infradev-events",
       "repo:DEFRA@1/ai-platform-deployments@3:environment:infradev",
-      "repo:DEFRA@1/ai-platform-deployments@3:environment:infradev-events",
     ])
-    error_message = "the events identity trusts the {env} and {env}-events Environments of both state repositories, and nothing else"
+    error_message = "the events identity trusts the {env} Environment of both state repositories, and nothing else"
   }
 
   assert {
-    condition     = length(output.events_federated_subjects) == 4 && length(azurerm_federated_identity_credential.events) == 4
-    error_message = "two repositories times two Environments: four credentials, no more"
+    condition     = length(output.events_federated_subjects) == 2 && length(azurerm_federated_identity_credential.events) == 2
+    error_message = "two repositories, one Environment each: two credentials, no more"
   }
 
   assert {
@@ -278,9 +276,7 @@ run "federates_the_events_identity_to_exactly_four_subjects" {
   assert {
     condition = toset([for credential in azurerm_federated_identity_credential.events : credential.name]) == toset([
       "ai-platform-tenants-infradev",
-      "ai-platform-tenants-infradev-events",
       "ai-platform-deployments-infradev",
-      "ai-platform-deployments-infradev-events",
     ])
     error_message = "credential names are derived from the repository and Environment, so a repeat apply changes nothing"
   }
@@ -416,7 +412,7 @@ run "names_the_events_identity_for_the_longest_environment" {
   }
 
   assert {
-    condition     = azurerm_user_assigned_identity.events.name == "id-aip-events-abcdefghijklmnop" && contains(output.events_federated_subjects, "repo:DEFRA@1/ai-platform-deployments@3:environment:abcdefghijklmnop-events")
+    condition     = azurerm_user_assigned_identity.events.name == "id-aip-events-abcdefghijklmnop" && contains(output.events_federated_subjects, "repo:DEFRA@1/ai-platform-deployments@3:environment:abcdefghijklmnop")
     error_message = "a 16-character environment still gives valid names and subjects"
   }
 }

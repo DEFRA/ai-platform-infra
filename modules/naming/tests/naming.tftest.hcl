@@ -86,7 +86,7 @@ run "names_a_github_environment_credential_from_the_repository_and_environment" 
   command = plan
 
   assert {
-    condition     = format(output.federated_credential, "ai-platform-tenants", "infradev-events") == "ai-platform-tenants-infradev-events"
+    condition     = format(output.federated_credential, "ai-platform-tenants", "infradev") == "ai-platform-tenants-infradev"
     error_message = "a federated credential for a GitHub Environment is named {repository}-{environment}, which keeps the names already applied"
   }
 }

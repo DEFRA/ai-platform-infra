@@ -129,7 +129,7 @@ for `autoPin` environments, dispatch `submit.yml` on `main` of the state reposit
 `remove` exists for the D14 revert of a newly added team file and for deleting a team; it is a
 `write` of no file.
 
-`submit` runs in the `{env}-events` Environment and commits directly to `main` as the App: no branch, no
+`submit` runs in the `{env}` Environment with `deployment: false` (no Deployment, so the apply's baseline is untouched) and commits directly to `main` as the App: no branch, no
 pull request. It then:
 
 1. Checks the base. A `revision` or blob SHA that no longer matches `main` ends `stale-revision`, and an
