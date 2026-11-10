@@ -241,21 +241,18 @@ resource "azuread_application_federated_identity_credential" "deploy" {
 # role: it exists to sign in, then presents a token for its audience
 # registration, which CDP's IAM role trusts for sqs:SendMessage on the events
 # queue alone, by this identity's object ID. Its credentials trust the {env}
-# Environment (the apply) and the {env}-events Environment (submit and
-# pause.yml, which create no Deployment in {env}) of the two state
-# repositories, and nothing else; a third repository is refused by the
-# oidc_subject_prefixes validation.
+# Environment of the two state repositories, which every job that publishes
+# (the apply, and submit and pause.yml with deployment: false) runs in, and
+# nothing else; a third repository is refused by the oidc_subject_prefixes
+# validation.
 locals {
-  events_environments = {
-    environment = local.environment
-    events      = "${local.environment}-events"
-  }
-
+  # Keyed `{repository}/environment`, as before, so the two credentials that
+  # stay keep their addresses in state and only the `/events` ones are destroyed.
   events_credentials = {
-    for pair in setproduct(keys(var.oidc_subject_prefixes), keys(local.events_environments)) :
-    "${pair[0]}/${pair[1]}" => {
-      repository  = pair[0]
-      environment = local.events_environments[pair[1]]
+    for repository in keys(var.oidc_subject_prefixes) :
+    "${repository}/environment" => {
+      repository  = repository
+      environment = local.environment
     }
   }
 }

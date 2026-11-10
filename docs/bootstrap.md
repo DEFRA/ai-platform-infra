@@ -116,25 +116,26 @@ to the events queue and do nothing else (design C #identities). The audience reg
 identity's, not a separate no-permission one: the role's subject restriction, not the audience, keeps the
 deploy identity itself out.
 
-The identity trusts four subjects, and the `oidc_subject_prefixes` validation refuses any other repository:
+The identity trusts two subjects, and the `oidc_subject_prefixes` validation refuses any other repository:
 
-| Repository                | Environment    | Used by                                                         |
-| ------------------------- | -------------- | --------------------------------------------------------------- |
-| `ai-platform-tenants`     | `{env}`        | the apply                                                       |
-| `ai-platform-tenants`     | `{env}-events` | `submit` and `pause.yml`, which create no Deployment in `{env}` |
-| `ai-platform-deployments` | `{env}`        | the apply                                                       |
-| `ai-platform-deployments` | `{env}-events` | `submit` and `pause.yml`                                        |
+| Repository                | Environment | Used by                                                                      |
+| ------------------------- | ----------- | ---------------------------------------------------------------------------- |
+| `ai-platform-tenants`     | `{env}`     | the apply, and `submit` and `pause.yml` (`deployment: false`: no Deployment) |
+| `ai-platform-deployments` | `{env}`     | the apply, and `submit` and `pause.yml` (`deployment: false`: no Deployment) |
+
+There is no `{env}-events` Environment: a job that must not record a Deployment in `{env}` sets
+`deployment: false` on `{env}` instead.
 
 Azure can refuse several credentials written to one managed identity at once. If the first apply reports a
 conflict on a credential, run it again; the rest of the apply is unchanged, or use `-parallelism=1`.
 
 Read the values with `terraform -chdir=bootstrap output events_identity`:
 
-1. In both Environments (`{env}` and `{env}-events`) of both state repositories set `AIP_EVENTS_CLIENT_ID`
+1. In the `{env}` Environment of both state repositories set `AIP_EVENTS_CLIENT_ID`
    to `client_id` and `AIP_EVENTS_AUDIENCE` to `audience`: the deploy registration's client ID, which the
    workflows request the token for and so is its `aud` (`audience_uri`, its `api://` identifier URI, would make
    `aud` the URI). `AIP_EVENTS_QUEUE_URL` and `AIP_EVENTS_ROLE_ARN` come from CDP (step 2); `AIP_PAUSED` goes
-   on `{env}-events` only. `AZURE_TENANT_ID` is the repository variable set above.
+   on `{env}` too. `AZURE_TENANT_ID` is the repository variable set above.
 2. Ask CDP support for external access to the events queue for this identity, as `sqs:SendMessage` only, in
    their "Managed Identities against an App Reg" form: `issuer_url` is `issuer`
    (`https://sts.windows.net/{tenant}/`, with the trailing slash, as the v1 token's `iss` is), `client_id` is
