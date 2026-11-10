@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.3](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.2...v0.11.3) (2026-11-10)
+
+
+### Bug Fixes
+
+* **bootstrap:** trust only the {env} Environment for the events identity ([#48](https://github.com/DEFRA/ai-platform-infra/issues/48)) ([ced4c24](https://github.com/DEFRA/ai-platform-infra/commit/ced4c24dee7da6ae92c23c0a7ca317c8c1d7f724))
+
 ## [0.11.2](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.1...v0.11.2) (2026-11-05)
 
 
