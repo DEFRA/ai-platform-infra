@@ -101,8 +101,9 @@ Rules beyond the schema, enforced by `validate`:
   them with `entra.clientSecrets` (a boolean); absent, `platform-test` and `sandbox` allow them and every
   other class does not, so DEV, which shares `consumer-lower` with QA, sets it `true` when its entry is
   created. `consumer-production` never allows them without an exception, whatever the flag says. Where they
-  are not allowed, `secretsAllowed: true` needs an `oauth.exception` naming a host that cannot federate, and
-  an exception naming a CDP service is always refused.
+  are not allowed, `secretsAllowed: true` needs an `oauth.exception` naming a host that cannot federate. An
+  exception naming a CDP service is always refused with `secretsAllowed: true`, even where the environment
+  allows secrets.
 - Entra objects: the environment's deploy identity creates the platform's API audience registration
   and service principal, and the same pair for each team. Entra counts every object it creates,
   soft-deleted ones included, so the teams of an environment stay within the registry entry's

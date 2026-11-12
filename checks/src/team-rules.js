@@ -412,18 +412,19 @@ function checkOauth(path, document, entry) {
     )
   }
 
-  if (oauth.secretsAllowed && !clientSecretsAllowed(entry)) {
-    if (!oauth.exception) {
+  if (oauth.secretsAllowed) {
+    if (oauth.exception && /\bcdp\b/i.test(oauth.exception.host)) {
+      // Refused whether or not the environment allows secrets.
+      problems.push(
+        problem(path, 'a CDP service can federate, so it never gets a secret')
+      )
+    } else if (!oauth.exception && !clientSecretsAllowed(entry)) {
       problems.push(
         problem(
           path,
           `client secrets are not allowed in ${entry.name}: they need an ` +
             'exception naming a host that cannot federate'
         )
-      )
-    } else if (/\bcdp\b/i.test(oauth.exception.host)) {
-      problems.push(
-        problem(path, 'a CDP service can federate, so it never gets a secret')
       )
     }
   }

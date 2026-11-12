@@ -680,6 +680,25 @@ describe('checkTeamFile', () => {
       }
     )
 
+    test.each([
+      ['platform-test', undefined],
+      ['sandbox', undefined],
+      ['consumer-lower', true]
+    ])(
+      'refuses a secret exception for a CDP service in %s where clientSecrets is %s',
+      (envClass, clientSecrets) => {
+        const exception = {
+          host: 'beta-api on CDP',
+          reason: 'test',
+          reviewDate: '2027-01-01'
+        }
+
+        expect(checkIn(envClass, { clientSecrets }, { exception })).toContain(
+          'a CDP service can federate, so it never gets a secret'
+        )
+      }
+    )
+
     test.each(['consumer-lower', 'consumer-production'])(
       'accepts a secret exception for a host that cannot federate in %s',
       (envClass) => {
