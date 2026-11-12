@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -15,6 +16,7 @@ import {
   ENVIRONMENTS_DIR,
   INFRA_DIR,
   alphaTeam,
+  betaTeam,
   serialise,
   teamPath
 } from '../fixtures/gitops-files.js'
@@ -182,6 +184,142 @@ describe('run', () => {
     } finally {
       repository.destroy()
     }
+  })
+
+  describe('notices', () => {
+    function environmentsWithoutTeamRegistrations() {
+      const environments = join(scratch, 'environments-no-registrations')
+      cpSync(ENVIRONMENTS_DIR, environments, { recursive: true })
+      const path = join(environments, 'registry.json')
+      const registry = JSON.parse(readFileSync(path, 'utf8'))
+      registry.environments[0].entra.teamRegistrations = false
+      writeFileSync(path, JSON.stringify(registry))
+
+      return environments
+    }
+
+    function tenantsArgs(repository, base, head, environments) {
+      return [
+        'tenants',
+        '--repo',
+        repository.dir,
+        '--base',
+        base,
+        '--head',
+        head,
+        '--infra',
+        INFRA_DIR,
+        '--environments',
+        environments,
+        '--author',
+        'ai-platform-orchestrator[bot]',
+        '--operation-id',
+        betaTeam().operationId
+      ]
+    }
+
+    test.each([
+      [
+        'prints it as a line',
+        'false',
+        'environments/infradev/beta.json: notice: registration not enabled in infradev: 1 federation of beta is accepted but not applied\n'
+      ],
+      [
+        'prints it as an annotation inside Actions',
+        'true',
+        '::notice file=environments/infradev/beta.json::registration not enabled in infradev: 1 federation of beta is accepted but not applied\n'
+      ]
+    ])(
+      'a federation with registrations off %s and still passes',
+      (_, actions, line) => {
+        vi.stubEnv('GITHUB_ACTIONS', actions)
+        const repository = createRepository()
+
+        try {
+          const base = repository.commit('chore: initialise')
+          repository.write(teamPath(betaTeam()), serialise(betaTeam()))
+          const head = repository.commit('chore: beta')
+          const io = capture()
+
+          expect(
+            run(
+              tenantsArgs(
+                repository,
+                base,
+                head,
+                environmentsWithoutTeamRegistrations()
+              ),
+              io
+            )
+          ).toBe(0)
+          expect(io.out).toBe(line)
+        } finally {
+          repository.destroy()
+        }
+      }
+    )
+
+    test('prints no notice where registrations are enabled', () => {
+      const repository = createRepository()
+
+      try {
+        const base = repository.commit('chore: initialise')
+        repository.write(teamPath(betaTeam()), serialise(betaTeam()))
+        const head = repository.commit('chore: beta')
+        const io = capture()
+
+        expect(
+          run(tenantsArgs(repository, base, head, ENVIRONMENTS_DIR), io)
+        ).toBe(0)
+        expect(io.out).toBe('')
+      } finally {
+        repository.destroy()
+      }
+    })
+
+    test('puts the notices of the applied commit in the run report', () => {
+      const repository = createRepository()
+
+      try {
+        repository.write(teamPath(betaTeam()), serialise(betaTeam()))
+        const head = repository.commit('chore: beta')
+        const out = join(scratch, 'report.json')
+
+        expect(
+          run(
+            [
+              'run-report',
+              '--repo',
+              repository.dir,
+              '--head',
+              head,
+              '--environment',
+              'infradev',
+              '--state',
+              'tenants',
+              '--environments',
+              environmentsWithoutTeamRegistrations(),
+              '--outcome',
+              'success',
+              '--out',
+              out
+            ],
+            capture()
+          )
+        ).toBe(0)
+        expect(JSON.parse(readFileSync(out, 'utf8')).notices).toEqual([
+          {
+            code: 'registration-not-enabled',
+            file: 'environments/infradev/beta.json',
+            team: 'beta',
+            message:
+              'registration not enabled in infradev: 1 federation of beta is accepted but not applied'
+          }
+        ])
+      } finally {
+        repository.destroy()
+      }
+    })
   })
 
   test('refuses an unexplained delete in plan-guard', () => {

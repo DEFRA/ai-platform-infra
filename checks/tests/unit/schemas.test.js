@@ -175,6 +175,36 @@ describe('loadValidators', () => {
     )
   })
 
+  describe('entra.clientSecrets', () => {
+    function registryWith(entra) {
+      return {
+        schemaVersion: 1,
+        environments: [
+          registryEntry({ entra: { ...registryEntry().entra, ...entra } })
+        ]
+      }
+    }
+
+    test.each([true, false])('accepts %s', (clientSecrets) => {
+      expect(validators.registry(registryWith({ clientSecrets }))).toEqual([])
+    })
+
+    test('accepts its absence', () => {
+      expect(validators.registry(registryWith({}))).toEqual([])
+    })
+
+    test.each(['true', 1, null])(
+      'refuses %j, which is not a boolean',
+      (value) => {
+        expect(
+          validators.registry(registryWith({ clientSecrets: value }))
+        ).toContainEqual(
+          expect.stringContaining('/environments/0/entra/clientSecrets must be')
+        )
+      }
+    )
+  })
+
   test('refuses a Cognito issuer for CDP', () => {
     const entry = registryEntry()
     const registry = {

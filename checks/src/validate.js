@@ -16,7 +16,8 @@ import {
   checkDeletion,
   checkEnvironmentTeams,
   checkTeamFile,
-  parseTeamPath
+  parseTeamPath,
+  teamNotices
 } from './team-rules.js'
 
 const ENVIRONMENT_FOLDER = /^environments\/([a-z][a-z0-9]{1,15})\//
@@ -149,7 +150,10 @@ function checkWholeEnvironment(repoDir, ref, environment, context) {
  * @param {string[]} [input.approvers] - Logins that approved the head.
  * @param {string} [input.operationId] - From the op/{id} branch.
  * @returns {{environment: string | null,
- *   problems: Array<{file: string, message: string}>}} Result.
+ *   problems: Array<{file: string, message: string}>,
+ *   notices?: Array<{code: string, file: string, team: string,
+ *   message: string}>}} Result; notices (accepted but worth a look) come
+ *   only when nothing is refused.
  */
 function validateTenantsChange(input) {
   const { repoDir, base, head, context } = input
@@ -199,7 +203,21 @@ function validateTenantsChange(input) {
     problems.push(...checkWholeEnvironment(repoDir, head, environment, context))
   }
 
-  return { environment, problems }
+  // Only what is accepted gets a notice; the files here passed checkTeamFile.
+  const notices =
+    problems.length > 0
+      ? []
+      : files
+          .filter(({ status }) => status !== 'D')
+          .flatMap(({ path }) =>
+            teamNotices({
+              path,
+              document: JSON.parse(readFileAt(repoDir, head, path)),
+              entry
+            })
+          )
+
+  return { environment, problems, notices }
 }
 
 /**

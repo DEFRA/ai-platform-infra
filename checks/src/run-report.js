@@ -1,5 +1,6 @@
 import { commitsWithTrailers } from './git.js'
-import { TEAM_ADDRESS } from './plan-guard.js'
+import { TEAM_ADDRESS, teamsAt } from './plan-guard.js'
+import { teamNotices } from './team-rules.js'
 
 const KINDS = ['create', 'update', 'delete', 'replace']
 
@@ -91,10 +92,41 @@ function parseFailures(log) {
 }
 
 /**
+ * Notices for the teams an apply carries (see teamNotices): the same shape
+ * `validate` prints, so a federation held back by a missing team
+ * registration reads the same in a pull request and in the run report.
+ * Only a tenants state has team files, and without the registry entry there
+ * is nothing to compare them with.
+ *
+ * @param {object} input - What the apply carried.
+ * @param {string} input.repoDir - State repository checkout.
+ * @param {string} input.head - Commit applied.
+ * @param {string} input.environment - Environment name.
+ * @param {string} input.state - `platform` or `tenants`.
+ * @param {object | null | undefined} input.entry - Registry entry.
+ * @returns {Array<{code: string, file: string, team: string,
+ *   message: string}>} Notices.
+ */
+function buildNotices({ repoDir, head, environment, state, entry }) {
+  if (state !== 'tenants' || !entry) {
+    return []
+  }
+
+  return [...teamsAt(repoDir, head, environment)].flatMap(([slug, document]) =>
+    teamNotices({
+      path: `environments/${environment}/${slug}.json`,
+      document,
+      entry
+    })
+  )
+}
+
+/**
  * The run report a backend reads to match an apply to its operations
  * (R12): applied SHA, operation IDs from trailers since the last applied
- * commit, change counts, failing teams and the resources each team now
- * has. Never contains a secret: outputs are non-sensitive by design.
+ * commit, change counts, failing teams, the notices (accepted but not
+ * applied) and the resources each team now has. Never contains a secret:
+ * outputs are non-sensitive by design.
  *
  * @param {object} input - Run facts.
  * @returns {object} The report.
@@ -111,7 +143,8 @@ function buildRunReport(input) {
     outputs,
     outcome,
     release,
-    run
+    run,
+    entry
   } = input
   const path =
     state === 'platform'
@@ -135,6 +168,7 @@ function buildRunReport(input) {
     operations: commitsWithTrailers(repoDir, base, head, path),
     changes: summariseChanges(plan),
     failingTeams,
+    notices: buildNotices({ repoDir, head, environment, state, entry }),
     // A failure with no parsed error, or one naming no team, is not
     // attributable to a team.
     unattributedFailure:

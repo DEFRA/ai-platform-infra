@@ -68,7 +68,74 @@ describe('validateTenantsChange', () => {
         author: WRITER,
         operationId: alphaTeam().operationId
       })
-    ).toEqual({ environment: 'infradev', problems: [] })
+    ).toEqual({ environment: 'infradev', problems: [], notices: [] })
+  })
+
+  describe('where team registrations are off', () => {
+    const { entra } = registryEntry()
+    const withoutRegistrations = {
+      ...context,
+      registry: {
+        ...context.registry,
+        environments: [
+          registryEntry({ entra: { ...entra, teamRegistrations: false } })
+        ]
+      }
+    }
+
+    function validateBeta(withContext) {
+      const head = submitTeam(betaTeam())
+
+      return validateTenantsChange({
+        repoDir: repository.dir,
+        base,
+        head,
+        context: withContext,
+        author: WRITER,
+        operationId: betaTeam().operationId
+      })
+    }
+
+    test('accepts a federation and gives a notice for it', () => {
+      expect(validateBeta(withoutRegistrations)).toEqual({
+        environment: 'infradev',
+        problems: [],
+        notices: [
+          {
+            code: 'registration-not-enabled',
+            file: teamPath(betaTeam()),
+            team: 'beta',
+            message:
+              'registration not enabled in infradev: 1 federation of beta is accepted but not applied'
+          }
+        ]
+      })
+    })
+
+    test('gives no notice where registrations are enabled', () => {
+      expect(validateBeta(context).notices).toEqual([])
+    })
+
+    test('gives no notice for a file it refuses', () => {
+      const consumer = {
+        ...withoutRegistrations,
+        registry: {
+          ...withoutRegistrations.registry,
+          environments: [
+            registryEntry({
+              class: 'consumer-lower',
+              entra: { ...entra, teamRegistrations: false }
+            })
+          ]
+        }
+      }
+      const result = validateBeta(consumer)
+
+      expect(messages(result)).toContain(
+        'federations need a team registration, which infradev does not create'
+      )
+      expect(result.notices).toEqual([])
+    })
   })
 
   test('refuses the research file from a writer App: no portal path writes it', () => {
@@ -103,7 +170,7 @@ describe('validateTenantsChange', () => {
         labels: ['break-glass'],
         approvers: ['reviewer-one', 'reviewer-two']
       })
-    ).toEqual({ environment: 'infradev', problems: [] })
+    ).toEqual({ environment: 'infradev', problems: [], notices: [] })
   })
 
   test('refuses a change that leaves the research file short of the catalogue', () => {
