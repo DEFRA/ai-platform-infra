@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.3...v0.12.0) (2026-11-13)
+
+
+### Features
+
+* team federations with a notice where registrations are off, clientSecrets flag ([#53](https://github.com/DEFRA/ai-platform-infra/issues/53)) ([fc4a8a4](https://github.com/DEFRA/ai-platform-infra/commit/fc4a8a4cfc1a59d0dfe82dc065fae701a4aa56db))
+
 ## [0.11.3](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.2...v0.11.3) (2026-11-10)
 
 
