@@ -23,4 +23,16 @@ function errorAnnotation(file, message) {
   return `::error file=${escapeProperty(file)}::${escapeData(message)}\n`
 }
 
-export { errorAnnotation }
+/**
+ * A GitHub Actions `notice` workflow command for something accepted but
+ * worth a look.
+ *
+ * @param {string} file - Path the notice is about.
+ * @param {string} message - What a person should know.
+ * @returns {string} The command line, ending in a newline.
+ */
+function noticeAnnotation(file, message) {
+  return `::notice file=${escapeProperty(file)}::${escapeData(message)}\n`
+}
+
+export { errorAnnotation, noticeAnnotation }

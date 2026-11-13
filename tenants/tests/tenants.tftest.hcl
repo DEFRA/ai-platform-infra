@@ -470,14 +470,30 @@ run "applies_teams_without_registrations" {
   }
 }
 
-run "refuses_a_federation_where_team_registrations_are_off" {
-  command = plan
+run "ignores_a_federation_where_team_registrations_are_off" {
+  command = apply
 
   variables {
     team_registrations = false
+    teams = {
+      beta = var.teams.beta
+    }
   }
 
-  expect_failures = [var.teams]
+  assert {
+    condition     = length(var.teams.beta.oauth.federations) == 1
+    error_message = "the team file still holds its federation"
+  }
+
+  assert {
+    condition     = output.teams.beta.registration == null
+    error_message = "a federation hangs off the registration, so none is created and the federation waits"
+  }
+
+  assert {
+    condition     = output.teams.beta.api.url == "https://apim-aip-infradev.azure-api.net/beta"
+    error_message = "the team's API is still applied"
+  }
 }
 
 run "refuses_a_release_the_platform_has_not_applied" {

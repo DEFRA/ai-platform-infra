@@ -1,4 +1,18 @@
-import { errorAnnotation } from '../../src/annotations.js'
+import { errorAnnotation, noticeAnnotation } from '../../src/annotations.js'
+
+describe('noticeAnnotation', () => {
+  test('writes one notice command', () => {
+    expect(
+      noticeAnnotation('environments/infradev/beta.json', 'not applied')
+    ).toBe('::notice file=environments/infradev/beta.json::not applied\n')
+  })
+
+  test('escapes what would inject another command', () => {
+    expect(noticeAnnotation('a,b', 'x\n::error::y')).toBe(
+      '::notice file=a%2Cb::x%0A::error::y\n'
+    )
+  })
+})
 
 describe('errorAnnotation', () => {
   test('writes one error command for a problem', () => {

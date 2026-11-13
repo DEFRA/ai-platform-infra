@@ -89,12 +89,21 @@ Rules beyond the schema, enforced by `validate`:
 - OAuth: Entra enabled in the registry entry. Setting the entry's `entra.teamRegistrations` to `false`
   (default `true`) skips only each team's app registration, an interim switch for a deploy identity
   that cannot yet create app registrations: the team's project, deployments and API are still applied,
-  its federations must be empty, and external clients still work. A CDP federation names only its CDP service; Terraform
+  and external clients still work. A federation hangs off the registration, so `aip-checks` accepts
+  federations there with a notice (`registration not enabled`, also in the run report) in `platform-test`
+  and `sandbox` environments only, where they wait and are not applied, and refuses them in every other
+  class. A CDP federation names only its CDP service; Terraform
   derives the issuer, the subject `arn:aws:iam::{account}:role/{service}` and the audience from the
   environment's registry entry, so a team file holds nothing environment-specific for CDP. Azure
   federations use the Defra tenant issuer and a principal ID; at most 20 federations and 40 clients;
-  no two federations of a team trust one workload; one team per CDP service per environment;
-  secrets in a `consumer-production` environment need an exception that never names a CDP service.
+  no two federations of a team trust one workload; one team per CDP service per environment.
+- Client secrets: where `secretsAllowed` is true the environment must allow them. A registry entry allows
+  them with `entra.clientSecrets` (a boolean); absent, `platform-test` and `sandbox` allow them and every
+  other class does not, so DEV, which shares `consumer-lower` with QA, sets it `true` when its entry is
+  created. `consumer-production` never allows them without an exception, whatever the flag says. Where they
+  are not allowed, `secretsAllowed: true` needs an `oauth.exception` naming a host that cannot federate. An
+  exception naming a CDP service is always refused with `secretsAllowed: true`, even where the environment
+  allows secrets.
 - Entra objects: the environment's deploy identity creates the platform's API audience registration
   and service principal, and the same pair for each team. Entra counts every object it creates,
   soft-deleted ones included, so the teams of an environment stay within the registry entry's
@@ -180,7 +189,11 @@ apply remove more than one team, so a mistaken sweep never runs unattended) and 
 The run report ([`run-report.js`](../checks/src/run-report.js)) records the applied and previous SHAs,
 every operation ID and trace context in trailers since the last applied commit, change counts per
 team, failing teams, whether a failure was unattributed, the number of Entra objects the state holds
-(monitored against the deploy identity's limit), and the non-sensitive Terraform outputs.
+(monitored against the deploy identity's limit), the non-sensitive Terraform outputs, and `notices`:
+one `{code, file, team, message}` for each team whose federations the apply accepted but did not apply
+because the environment creates no team registration (`code` `registration-not-enabled`, `message` starting
+"registration not enabled"). `aip-checks tenants` prints the same notices for a pull request, and
+`run-report` computes them when given `--environments` (the registry); without it `notices` is empty.
 
 ## Operation states
 

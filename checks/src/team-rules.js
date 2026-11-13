@@ -62,6 +62,62 @@ function teamRegistrations(entry) {
   return entry.entra.enabled && entry.entra.teamRegistrations !== false
 }
 
+// Classes that may run with no team registrations: a federation is then
+// accepted with a notice and not applied. Every other class refuses it
+// (design E choice F).
+const NOTICE_CLASSES = new Set(['platform-test', 'sandbox'])
+const REGISTRATION_NOT_ENABLED = 'registration-not-enabled'
+
+// Where teams may use client secrets without an exception (design E choice
+// A): the entry says so, else platform-test and sandbox do. Production never
+// does, so a flag set there changes nothing.
+function clientSecretsAllowed(entry) {
+  if (entry.class === 'consumer-production') {
+    return false
+  }
+
+  return entry.entra.clientSecrets ?? NOTICE_CLASSES.has(entry.class)
+}
+
+/**
+ * What a change deserves a person's attention for without refusing it: a
+ * federation in an environment with no team registrations is accepted but
+ * not applied. `validate` prints each notice, and the run report carries
+ * them as `notices`, so there is one shape.
+ *
+ * @param {object} input - A team file and its environment.
+ * @param {string} input.path - Team file path.
+ * @param {object} input.document - A schema-valid team file.
+ * @param {object} input.entry - The environment's registry entry.
+ * @returns {Array<{code: string, file: string, team: string,
+ *   message: string}>} Notices.
+ */
+function teamNotices({ path, document, entry }) {
+  const count = document.oauth?.federations?.length ?? 0
+
+  if (
+    count === 0 ||
+    teamRegistrations(entry) ||
+    !NOTICE_CLASSES.has(entry.class)
+  ) {
+    return []
+  }
+
+  const slug = document.team.slug
+
+  return [
+    {
+      code: REGISTRATION_NOT_ENABLED,
+      file: path,
+      team: slug,
+      message:
+        `registration not enabled in ${entry.name}: ${count} ` +
+        `${count === 1 ? 'federation' : 'federations'} of ${slug} ` +
+        `${count === 1 ? 'is' : 'are'} accepted but not applied`
+    }
+  ]
+}
+
 function parseTeamPath(path) {
   const match = TEAM_PATH.exec(path)
 
@@ -301,7 +357,11 @@ function checkOauth(path, document, entry) {
     return []
   }
 
-  if (!teamRegistrations(entry) && oauth.federations.length > 0) {
+  if (
+    !teamRegistrations(entry) &&
+    oauth.federations.length > 0 &&
+    !NOTICE_CLASSES.has(entry.class)
+  ) {
     return [
       problem(
         path,
@@ -352,14 +412,19 @@ function checkOauth(path, document, entry) {
     )
   }
 
-  if (oauth.secretsAllowed && entry.class === 'consumer-production') {
-    if (!oauth.exception) {
-      problems.push(
-        problem(path, 'secrets in production need an exception naming the host')
-      )
-    } else if (/\bcdp\b/i.test(oauth.exception.host)) {
+  if (oauth.secretsAllowed) {
+    if (oauth.exception && /\bcdp\b/i.test(oauth.exception.host)) {
+      // Refused whether or not the environment allows secrets.
       problems.push(
         problem(path, 'a CDP service can federate, so it never gets a secret')
+      )
+    } else if (!oauth.exception && !clientSecretsAllowed(entry)) {
+      problems.push(
+        problem(
+          path,
+          `client secrets are not allowed in ${entry.name}: they need an ` +
+            'exception naming a host that cannot federate'
+        )
       )
     }
   }
@@ -804,5 +869,6 @@ export {
   coolingOffDays,
   federationKey,
   parseTeamPath,
-  regionFor
+  regionFor,
+  teamNotices
 }

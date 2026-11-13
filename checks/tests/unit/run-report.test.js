@@ -5,7 +5,13 @@ import {
   summariseChanges,
   withoutSensitive
 } from '../../src/run-report.js'
-import { alphaTeam, serialise, teamPath } from '../fixtures/gitops-files.js'
+import {
+  alphaTeam,
+  betaTeam,
+  registryEntry,
+  serialise,
+  teamPath
+} from '../fixtures/gitops-files.js'
 import { createRepository } from '../helpers/repository.js'
 
 const ALPHA = 'module.team["alpha"]'
@@ -161,6 +167,88 @@ describe('buildRunReport', () => {
     } finally {
       repository.destroy()
     }
+  })
+
+  describe('notices', () => {
+    const { entra } = registryEntry()
+    const off = registryEntry({ entra: { ...entra, teamRegistrations: false } })
+    const notice = {
+      code: 'registration-not-enabled',
+      file: teamPath(betaTeam()),
+      team: 'beta',
+      message:
+        'registration not enabled in infradev: 1 federation of beta is accepted but not applied'
+    }
+
+    function reportFor(documents, extra = {}) {
+      const repository = createRepository()
+
+      try {
+        for (const document of documents) {
+          repository.write(teamPath(document), serialise(document))
+        }
+
+        const head = repository.commit('chore: write teams')
+
+        return buildRunReport({
+          repoDir: repository.dir,
+          base: null,
+          head,
+          environment: 'infradev',
+          state: 'tenants',
+          plan: null,
+          applyLog: '',
+          outputs: null,
+          outcome: 'success',
+          release: 'v0.5.0',
+          run: {
+            repository: 'DEFRA/ai-platform-tenants',
+            id: '1',
+            attempt: '1'
+          },
+          ...extra
+        })
+      } finally {
+        repository.destroy()
+      }
+    }
+
+    test('names a federation that waits for team registrations', () => {
+      expect(
+        reportFor([alphaTeam(), betaTeam()], { entry: off }).notices
+      ).toEqual([notice])
+    })
+
+    test('is empty where registrations are enabled', () => {
+      expect(
+        reportFor([betaTeam()], { entry: registryEntry() }).notices
+      ).toEqual([])
+    })
+
+    test('is empty without the registry entry', () => {
+      expect(reportFor([betaTeam()]).notices).toEqual([])
+    })
+
+    test('is empty in a consumer environment, which refuses the federation', () => {
+      const consumer = registryEntry({
+        class: 'consumer-lower',
+        entra: { ...entra, teamRegistrations: false }
+      })
+
+      expect(reportFor([betaTeam()], { entry: consumer }).notices).toEqual([])
+    })
+
+    test('is empty for a removed team, which keeps no federation', () => {
+      const removed = betaTeam({ status: 'removed', oauth: undefined })
+
+      expect(reportFor([removed], { entry: off }).notices).toEqual([])
+    })
+
+    test('is empty for the platform state', () => {
+      expect(
+        reportFor([betaTeam()], { entry: off, state: 'platform' }).notices
+      ).toEqual([])
+    })
   })
 
   test('treats a failure with no parsed error as unattributed', () => {

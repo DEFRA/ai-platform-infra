@@ -8,7 +8,7 @@ variable "release" {
 }
 
 variable "team_registrations" {
-  description = "Whether each team gets an Entra app registration: the registry entry's entra.enabled and entra.teamRegistrations (not false)."
+  description = "Whether each team gets an Entra app registration: the registry entry's entra.enabled and entra.teamRegistrations (not false). Where false a team's federations, which hang off its registration, are not applied (aip-checks accepts them with a notice in platform-test and sandbox only)."
   type        = bool
 }
 
@@ -197,13 +197,6 @@ variable "teams" {
       ]
     ]))
     error_message = "A CDP federation names only its service; an Azure federation names its issuer and subject."
-  }
-
-  validation {
-    condition = var.team_registrations || alltrue([
-      for team in var.teams : length(try(team.oauth.federations, [])) == 0
-    ])
-    error_message = "Federations hang off a team's registration: without team registrations a team has none."
   }
 
   validation {

@@ -1,13 +1,14 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 
-import { errorAnnotation } from './annotations.js'
+import { errorAnnotation, noticeAnnotation } from './annotations.js'
 import { canonicalJson } from './canonical-json.js'
 import { readEnvironmentConfig } from './environment-config.js'
 import { guardPlan, tenantsRemovals } from './plan-guard.js'
 import { buildRunReport } from './run-report.js'
-import { loadValidators } from './schemas.js'
+import { loadValidators, readJson } from './schemas.js'
 import { buildTeamsVariables } from './teams-variables.js'
 import {
   loadContext,
@@ -97,12 +98,20 @@ function tagResolver(remote) {
   }
 }
 
-function report(problems, io) {
+function report(problems, io, notices = []) {
   const inActions = process.env.GITHUB_ACTIONS === 'true'
 
   for (const { file, message } of problems) {
     io.stdout.write(
       inActions ? errorAnnotation(file, message) : `${file}: ${message}\n`
+    )
+  }
+
+  for (const { file, message } of notices) {
+    io.stdout.write(
+      inActions
+        ? noticeAnnotation(file, message)
+        : `${file}: notice: ${message}\n`
     )
   }
 
@@ -153,7 +162,11 @@ const COMMANDS = {
   },
 
   tenants(values, io) {
-    return report(validateTenantsChange(changeInput(values)).problems, io)
+    const { problems, notices = [] } = validateTenantsChange(
+      changeInput(values)
+    )
+
+    return report(problems, io, notices)
   },
 
   'tenants-on-main'(values, io) {
@@ -239,6 +252,14 @@ const COMMANDS = {
       outputs: outputs ? JSON.parse(outputs) : null,
       outcome: values.outcome ?? 'unknown',
       release: values.release ?? null,
+      // Optional, so a caller that does not pass the registry gets no notices.
+      entry: values.environments
+        ? readJson(
+            join(values.environments, 'registry.json')
+          ).environments.find(
+            (candidate) => candidate.name === values.environment
+          )
+        : null,
       run: {
         repository: values.repository ?? null,
         id: values['run-id'] ?? null,

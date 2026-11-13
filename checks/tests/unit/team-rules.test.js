@@ -3,7 +3,8 @@ import { loadValidators } from '../../src/schemas.js'
 import {
   checkEnvironmentTeams,
   checkTeamFile,
-  parseTeamPath
+  parseTeamPath,
+  teamNotices
 } from '../../src/team-rules.js'
 import {
   environmentParams,
@@ -412,32 +413,114 @@ describe('checkTeamFile', () => {
     })
   })
 
-  test('refuses a federation where Entra is not enabled', () => {
-    const entry = registryEntry({
-      entra: { enabled: false, tenantId: registryEntry().entra.tenantId }
+  describe('federations where no team registration is created', () => {
+    const { tenantId } = registryEntry().entra
+    const notEnabled = { enabled: false, tenantId }
+    const registrationsOff = {
+      enabled: true,
+      tenantId,
+      teamRegistrations: false
+    }
+    const notice = {
+      code: 'registration-not-enabled',
+      file: teamPath(betaTeam()),
+      team: 'beta',
+      message:
+        'registration not enabled in infradev: 1 federation of beta is accepted but not applied'
+    }
+
+    function noticesOf(document, entry) {
+      return teamNotices({ path: teamPath(document), document, entry })
+    }
+
+    test.each([
+      ['Entra is not enabled', notEnabled],
+      ['team registrations are off', registrationsOff]
+    ])('accepts them in platform-test where %s, with a notice', (_, entra) => {
+      const entry = registryEntry({ entra })
+
+      expect(check(betaTeam(), { entry })).toEqual([])
+      expect(noticesOf(betaTeam(), entry)).toEqual([notice])
     })
 
-    expect(check(betaTeam(), { entry })).toContain(
-      'federations need a team registration, which infradev does not create'
+    test('accepts them in sandbox with a notice', () => {
+      const entry = registryEntry({
+        name: 'sandbox',
+        class: 'sandbox',
+        entra: registrationsOff
+      })
+      const document = { ...betaTeam(), environment: 'sandbox' }
+
+      expect(
+        check(document, { entry, path: 'environments/sandbox/beta.json' })
+      ).toEqual([])
+      expect(noticesOf(document, entry)).toEqual([
+        {
+          ...notice,
+          file: 'environments/sandbox/beta.json',
+          message: notice.message.replace('infradev', 'sandbox')
+        }
+      ])
+    })
+
+    test.each(['consumer-lower', 'consumer-production', 'shared-service'])(
+      'still refuses them in %s',
+      (envClass) => {
+        const entry = registryEntry({
+          name: 'dev',
+          class: envClass,
+          entra: registrationsOff
+        })
+        const document = { ...betaTeam(), environment: 'dev' }
+
+        expect(
+          check(document, { entry, path: 'environments/dev/beta.json' })
+        ).toContain(
+          'federations need a team registration, which dev does not create'
+        )
+        expect(noticesOf(document, entry)).toEqual([])
+      }
     )
-  })
 
-  test('refuses a federation where team registrations are off', () => {
-    const entry = registryEntry({
-      entra: { ...registryEntry().entra, teamRegistrations: false }
+    test('says "federations" for two of them', () => {
+      const entry = registryEntry({ entra: registrationsOff })
+      const second = {
+        ...betaTeam().oauth.federations[0],
+        name: 'beta-two',
+        service: 'beta-two'
+      }
+      const document = withOauth({
+        federations: [...betaTeam().oauth.federations, second]
+      })
+
+      expect(noticesOf(document, entry)[0].message).toBe(
+        'registration not enabled in infradev: 2 federations of beta are accepted but not applied'
+      )
     })
 
-    expect(check(betaTeam(), { entry })).toContain(
-      'federations need a team registration, which infradev does not create'
-    )
-  })
-
-  test('allows a team with no federation where team registrations are off', () => {
-    const entry = registryEntry({
-      entra: { ...registryEntry().entra, teamRegistrations: false }
+    test('gives no notice where registrations are enabled', () => {
+      expect(noticesOf(betaTeam(), registryEntry())).toEqual([])
     })
 
-    expect(check(alphaTeam(), { entry })).toEqual([])
+    test('gives no notice to a team with no federation', () => {
+      expect(
+        noticesOf(alphaTeam(), registryEntry({ entra: registrationsOff }))
+      ).toEqual([])
+    })
+
+    test('gives no notice to a team with no oauth block', () => {
+      expect(
+        noticesOf(researchTeam(), registryEntry({ entra: registrationsOff }))
+      ).toEqual([])
+    })
+
+    test('allows a team with no federation where team registrations are off', () => {
+      expect(
+        check(alphaTeam(), {
+          entry: registryEntry({ entra: registrationsOff })
+        })
+      ).toEqual([])
+    })
   })
 
   test('refuses a CDP federation that names its own issuer or subject', () => {
@@ -537,35 +620,102 @@ describe('checkTeamFile', () => {
     )
   })
 
-  describe('in a production environment', () => {
-    const entry = registryEntry({ class: 'consumer-production' })
+  describe('client secrets', () => {
+    const refusal = (name) =>
+      `client secrets are not allowed in ${name}: they need an exception naming a host that cannot federate`
+    const cannotFederate = {
+      host: 'supplier SaaS',
+      reason: 'no workload identity support',
+      reviewDate: '2027-01-01'
+    }
 
-    test('refuses secrets without an exception', () => {
-      expect(check(betaTeam(), { entry })).toContain(
-        'secrets in production need an exception naming the host'
+    function checkIn(envClass, entra, oauth = {}) {
+      const entry = registryEntry({
+        class: envClass,
+        entra: { ...registryEntry().entra, ...entra }
+      })
+
+      return check(withOauth(oauth), { entry })
+    }
+
+    test.each([
+      ['platform-test', undefined],
+      ['sandbox', undefined],
+      ['consumer-lower', true]
+    ])(
+      'allows secrets in %s where clientSecrets is %s',
+      (envClass, clientSecrets) => {
+        expect(checkIn(envClass, { clientSecrets })).toEqual([])
+      }
+    )
+
+    test.each([
+      ['consumer-lower', undefined],
+      ['consumer-lower', false],
+      ['consumer-production', undefined],
+      ['consumer-production', true],
+      ['shared-service', undefined],
+      ['platform-test', false]
+    ])(
+      'refuses secrets without an exception in %s where clientSecrets is %s',
+      (envClass, clientSecrets) => {
+        expect(checkIn(envClass, { clientSecrets })).toContain(
+          refusal('infradev')
+        )
+      }
+    )
+
+    test.each(['consumer-lower', 'consumer-production'])(
+      'refuses a secret exception for a CDP service in %s',
+      (envClass) => {
+        const exception = {
+          host: 'beta-api on CDP',
+          reason: 'test',
+          reviewDate: '2027-01-01'
+        }
+
+        expect(checkIn(envClass, {}, { exception })).toContain(
+          'a CDP service can federate, so it never gets a secret'
+        )
+      }
+    )
+
+    test.each([
+      ['platform-test', undefined],
+      ['sandbox', undefined],
+      ['consumer-lower', true]
+    ])(
+      'refuses a secret exception for a CDP service in %s where clientSecrets is %s',
+      (envClass, clientSecrets) => {
+        const exception = {
+          host: 'beta-api on CDP',
+          reason: 'test',
+          reviewDate: '2027-01-01'
+        }
+
+        expect(checkIn(envClass, { clientSecrets }, { exception })).toContain(
+          'a CDP service can federate, so it never gets a secret'
+        )
+      }
+    )
+
+    test.each(['consumer-lower', 'consumer-production'])(
+      'accepts a secret exception for a host that cannot federate in %s',
+      (envClass) => {
+        expect(checkIn(envClass, {}, { exception: cannotFederate })).toEqual([])
+      }
+    )
+
+    test('asks for no exception where the file allows no secrets', () => {
+      expect(checkIn('consumer-lower', {}, { secretsAllowed: false })).toEqual(
+        []
       )
     })
 
-    test('refuses a secret exception for a CDP service', () => {
-      const exception = {
-        host: 'beta-api on CDP',
-        reason: 'test',
-        reviewDate: '2027-01-01'
-      }
-
-      expect(check(withOauth({ exception }), { entry })).toContain(
-        'a CDP service can federate, so it never gets a secret'
-      )
-    })
-
-    test('accepts a secret exception for a host that cannot federate', () => {
-      const exception = {
-        host: 'supplier SaaS',
-        reason: 'no workload identity support',
-        reviewDate: '2027-01-01'
-      }
-
-      expect(check(withOauth({ exception }), { entry })).toEqual([])
+    test('accepts an exception in an environment that allows secrets', () => {
+      expect(
+        checkIn('platform-test', {}, { exception: cannotFederate })
+      ).toEqual([])
     })
   })
 })

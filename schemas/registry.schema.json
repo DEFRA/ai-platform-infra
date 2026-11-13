@@ -95,8 +95,12 @@
           "required": ["enabled", "tenantId"],
           "properties": {
             "enabled": { "type": "boolean" },
+            "clientSecrets": {
+              "description": "Whether teams in this environment may use client secrets (design E choice A). Absent: allowed in platform-test and sandbox, not allowed elsewhere, so DEV, which shares consumer-lower with QA, sets true when its entry is created. Where not allowed, validate refuses secretsAllowed without an exception naming a host that cannot federate; consumer-production never allows them without one, whatever this says.",
+              "type": "boolean"
+            },
             "teamRegistrations": {
-              "description": "Whether tenants apply creates each team's Entra app registration. False skips only that registration: the team's project, deployments and API are still applied, and its federations must be empty. Interim switch for a deploy identity that cannot yet create app registrations; it has no effect while enabled is false.",
+              "description": "Whether tenants apply creates each team's Entra app registration. False skips only that registration: the team's project, deployments and API are still applied. A federation hangs off the registration, so where it is off a federation is accepted with a notice in platform-test and sandbox, never applied, and refused in every other class. Interim switch for a deploy identity that cannot yet create app registrations; it has no effect while enabled is false.",
               "type": "boolean",
               "default": true
             },
