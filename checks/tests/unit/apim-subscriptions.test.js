@@ -69,7 +69,7 @@ describe('Terraform owns no API Management subscription', () => {
       ...source.matchAll(/"(Microsoft\.ApiManagement\/[^"]+)"/g)
     ].map(([, action]) => action)
 
-    expect(actions).toHaveLength(7)
+    expect(actions).toHaveLength(9)
     expect(
       actions.filter((action) => /\/(apis|policies|products)\b/.test(action))
     ).toEqual([])
