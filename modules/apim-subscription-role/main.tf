@@ -7,11 +7,15 @@ locals {
   assignment_name      = uuidv5("url", "https://github.com/DEFRA/ai-platform-infra/role-assignments/${var.name}/${var.principal_object_id}")
 
   # Exactly what the Portal API's ARM adapter calls to mint, reveal, rotate and
-  # revoke a research key, and no `apis`, `policies` or `products` action: the
-  # narrowest built-in, API Management Service Contributor, is full control of
-  # the gateway, including the policy that enforces the research tier. Each
-  # exists in `az provider operation show --namespace Microsoft.ApiManagement`
-  # (checked 20 October 2026).
+  # revoke a research key and to write a team's access-window named value, and
+  # no `apis`, `policies` or `products` action: the narrowest built-in, API
+  # Management Service Contributor, is full control of the gateway, including
+  # the policy that enforces the research tier. Each exists in `az provider
+  # operation show --namespace Microsoft.ApiManagement` (checked 20 October
+  # 2026). Named values cannot be narrowed to `aip-*-access`: RBAC scopes to
+  # the instance, not to a child resource name, so the role can write any named
+  # value. The policy only reads them, and `clients` and `access` values stay
+  # Terraform's and the Portal API's by convention.
   actions = [
     "Microsoft.ApiManagement/service/read",
     "Microsoft.ApiManagement/service/subscriptions/read",
@@ -20,6 +24,8 @@ locals {
     "Microsoft.ApiManagement/service/subscriptions/listSecrets/action",
     "Microsoft.ApiManagement/service/subscriptions/regeneratePrimaryKey/action",
     "Microsoft.ApiManagement/service/subscriptions/regenerateSecondaryKey/action",
+    "Microsoft.ApiManagement/service/namedValues/read",
+    "Microsoft.ApiManagement/service/namedValues/write",
   ]
 }
 
@@ -27,7 +33,7 @@ resource "azurerm_role_definition" "this" {
   role_definition_id = local.role_definition_guid
   name               = var.name
   scope              = var.resource_group_id
-  description        = "Manage API Management subscriptions and read their keys: what the Portal API needs to issue research credentials, and no policy, API or product rights."
+  description        = "Manage API Management subscriptions and read their keys, and write named values: what the Portal API needs to issue research credentials and set team access windows, and no policy, API or product rights."
 
   permissions {
     actions     = local.actions

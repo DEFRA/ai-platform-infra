@@ -21,8 +21,10 @@ run "grants_exactly_what_the_portal_api_calls" {
       "Microsoft.ApiManagement/service/subscriptions/listSecrets/action",
       "Microsoft.ApiManagement/service/subscriptions/regeneratePrimaryKey/action",
       "Microsoft.ApiManagement/service/subscriptions/regenerateSecondaryKey/action",
+      "Microsoft.ApiManagement/service/namedValues/read",
+      "Microsoft.ApiManagement/service/namedValues/write",
     ])
-    error_message = "the role reads the service and manages subscriptions and their keys"
+    error_message = "the role reads the service, manages subscriptions and their keys, and reads and writes named values"
   }
 
   assert {
@@ -34,6 +36,20 @@ run "grants_exactly_what_the_portal_api_calls" {
       ])
     )
     error_message = "no APIs, policies or products, no wildcard and no NotActions: the gateway's policy is not this role's to change"
+  }
+}
+
+run "can_write_named_values_but_not_delete_them" {
+  command = plan
+
+  assert {
+    condition = (
+      contains(azurerm_role_definition.this.permissions[0].actions, "Microsoft.ApiManagement/service/namedValues/read") &&
+      contains(azurerm_role_definition.this.permissions[0].actions, "Microsoft.ApiManagement/service/namedValues/write") &&
+      !contains(azurerm_role_definition.this.permissions[0].actions, "Microsoft.ApiManagement/service/namedValues/delete") &&
+      !contains(azurerm_role_definition.this.permissions[0].actions, "Microsoft.ApiManagement/service/namedValues/listValue/action")
+    )
+    error_message = "the Portal API writes a team's access window and never deletes a named value or lists secret values"
   }
 }
 
