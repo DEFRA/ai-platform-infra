@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.12.0...v0.13.0) (2026-11-18)
+
+
+### Features
+
+* let the Portal API role read and write API Management named values ([#58](https://github.com/DEFRA/ai-platform-infra/issues/58)) ([0883c39](https://github.com/DEFRA/ai-platform-infra/commit/0883c3969d4d66e7c7f58102c8696a4bc828b798))
+
 ## [0.12.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.11.3...v0.12.0) (2026-11-13)
 
 
