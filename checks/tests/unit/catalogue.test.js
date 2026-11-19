@@ -158,7 +158,7 @@ describe('the Sweden Central listings', () => {
   })
 
   test('deploys nothing: no tier, no environment, a reason, and only the eu zone', () => {
-    for (const model of listed.filter(({ provider }) => provider !== 'openai' || !model)) {
+    for (const model of listed) {
       expect(model.tiers).toEqual([])
       expect(model.environments).toEqual([])
       expect(model.eligibility.reason).toMatch(/Sweden Central/)
