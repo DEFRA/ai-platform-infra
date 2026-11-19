@@ -109,7 +109,9 @@ describe('checkCatalogue', () => {
 
   test('refuses a duplicate offering id in a provider', () => {
     const catalogue = loadCatalogue(INFRA_DIR)
-    const provider = catalogue.providers[0]
+    const provider = catalogue.providers.find(
+      ({ name }) => name === 'openai.json'
+    )
     const offerings = [
       ...provider.document.offerings,
       provider.document.offerings[0]
@@ -127,6 +129,58 @@ describe('checkCatalogue', () => {
     expect(problems).toContain(
       'openai.json: offering azure-openai is listed twice'
     )
+  })
+})
+
+describe('the Sweden Central listings', () => {
+  const { models } = loadCatalogue(INFRA_DIR)
+  const listed = models
+    .map(({ document }) => document)
+    .filter(({ eligibility }) => !eligibility.eligible)
+    .filter(({ regions }) => regions.includes('swedencentral'))
+
+  test('lists models from more than OpenAI, so the catalogue shows what exists', () => {
+    const providers = new Set(listed.map(({ provider }) => provider))
+
+    expect(listed.length).toBeGreaterThanOrEqual(30)
+    expect(providers).toEqual(
+      new Set([
+        'anthropic',
+        'cohere',
+        'meta',
+        'microsoft',
+        'mistral',
+        'moonshot',
+        'openai',
+        'xai'
+      ])
+    )
+  })
+
+  test('deploys nothing: no tier, no environment, a reason, and only the eu zone', () => {
+    for (const model of listed) {
+      expect(model.tiers).toEqual([])
+      expect(model.environments).toEqual([])
+      expect(model.eligibility.reason).toMatch(/Sweden Central/)
+      expect(model.dataZone).toBe('eu')
+    }
+  })
+
+  test('lists no DeepSeek model, which D03 blocks', () => {
+    expect(
+      models.filter(({ document }) =>
+        /deepseek/i.test(`${document.provider} ${document.family}`)
+      )
+    ).toEqual([])
+  })
+
+  test('still has the models teams and research can use', () => {
+    const usable = models
+      .map(({ document }) => document)
+      .filter(({ eligibility }) => eligibility.eligible)
+      .map(({ slug }) => slug)
+
+    expect(usable).toContain('gpt-4o')
   })
 })
 

@@ -1,0 +1,35 @@
+{
+  "slug": "mistral-large-4",
+  "provider": "mistral",
+  "offering": "azure-foundry",
+  "family": "mistral-large",
+  "modelName": "mistral-large-4-latest",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Mistral Large 4",
+  "description": "Latest Mistral flagship model for complex multilingual work.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

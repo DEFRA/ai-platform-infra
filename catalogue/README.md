@@ -30,3 +30,5 @@ theirs that way in Infradev. `gpt-4-1-nano` and `gpt-5-nano` offer `DataZoneStan
 teams in Infradev, because neither is offered as Standard in UK South. `capacityPolicy.environments.{env}`
 overrides the limits per environment; its `quota`, in thousands of tokens per minute, caps the sum across
 every team and the research file in that environment, and an environment without one grants no capacity.
+
+Models in Sweden Central that the platform does not offer yet are listed so the portal's catalogue shows what exists: "tiers": [], "environments": [], "lifecycle.status": "proposed" and "eligibility.eligible": false with a reason, on a GlobalStandard SKU in swedencentral (the eu zone). They deploy nothing. DeepSeek models are not listed (D03). Making one available is a change to that file: its tiers, environments, a team SKU and a capacity policy.

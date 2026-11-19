@@ -1,0 +1,35 @@
+{
+  "slug": "cohere-command-a-plus",
+  "provider": "cohere",
+  "offering": "azure-foundry",
+  "family": "command",
+  "modelName": "Cohere-command-a-plus-05-2026",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Command A+",
+  "description": "Cohere reasoning model for enterprise question answering.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

@@ -1,0 +1,35 @@
+{
+  "slug": "o3-mini",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "o-series",
+  "modelName": "o3-mini",
+  "version": "2025-01-31",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "o3-mini",
+  "description": "A faster, lower-cost OpenAI reasoning model for text tasks.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

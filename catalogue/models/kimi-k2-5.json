@@ -1,0 +1,35 @@
+{
+  "slug": "kimi-k2-5",
+  "provider": "moonshot",
+  "offering": "azure-foundry",
+  "family": "kimi",
+  "modelName": "Kimi-K2.5",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Kimi K2.5",
+  "description": "Moonshot AI multimodal reasoning model.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

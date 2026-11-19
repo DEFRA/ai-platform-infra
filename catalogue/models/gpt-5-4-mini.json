@@ -1,0 +1,35 @@
+{
+  "slug": "gpt-5-4-mini",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "gpt-5",
+  "modelName": "gpt-5.4-mini",
+  "version": "2026-03-17",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "GPT-5.4 mini",
+  "description": "A smaller, faster GPT-5.4 for lower-cost reasoning tasks.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

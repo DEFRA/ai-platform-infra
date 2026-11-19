@@ -1,0 +1,35 @@
+{
+  "slug": "o4-mini",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "o-series",
+  "modelName": "o4-mini",
+  "version": "2025-04-16",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "o4-mini",
+  "description": "A compact OpenAI reasoning model that handles text and images.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

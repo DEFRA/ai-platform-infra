@@ -1,0 +1,35 @@
+{
+  "slug": "grok-4-1-fast-reasoning",
+  "provider": "xai",
+  "offering": "azure-foundry",
+  "family": "grok",
+  "modelName": "grok-4-1-fast-reasoning",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Grok 4.1 Fast (reasoning)",
+  "description": "SpaceXAI fast reasoning model for agentic and coding tasks.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

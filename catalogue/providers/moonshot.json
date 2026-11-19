@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/provider.schema.json",
+  "id": "moonshot",
+  "displayName": "Moonshot AI",
+  "offerings": [
+    {
+      "id": "azure-foundry",
+      "displayName": "Moonshot AI on Microsoft Foundry",
+      "hosting": {
+        "platform": "foundry",
+        "cloud": "azure"
+      },
+      "gateway": "azure-apim",
+      "terms": "https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"
+    }
+  ]
+}

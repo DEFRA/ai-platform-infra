@@ -1,0 +1,35 @@
+{
+  "slug": "claude-sonnet-4-6",
+  "provider": "anthropic",
+  "offering": "azure-foundry",
+  "family": "claude",
+  "modelName": "claude-sonnet-4-6",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Claude Sonnet 4.6",
+  "description": "Anthropic model balancing speed and capability for coding and analysis.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "messages",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}
