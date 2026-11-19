@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.1](https://github.com/DEFRA/ai-platform-infra/compare/v0.13.0...v0.13.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* bump hashicorp/azurerm from 5.10.0 to 5.13.0 in /platform ([#56](https://github.com/DEFRA/ai-platform-infra/issues/56)) ([4b90e86](https://github.com/DEFRA/ai-platform-infra/commit/4b90e86e35f90c35daaef569308848059fad5ba3))
+* bump hashicorp/azurerm from 5.10.0 to 5.13.0 in /tenants ([#57](https://github.com/DEFRA/ai-platform-infra/issues/57)) ([fab9027](https://github.com/DEFRA/ai-platform-infra/commit/fab9027e2383e25dda284c3c69e416fcf4a041df))
+
 ## [0.13.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.12.0...v0.13.0) (2026-11-18)
 
 
