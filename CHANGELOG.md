@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/DEFRA/ai-platform-infra/compare/v0.13.2...v0.14.0) (2026-11-19)
+
+
+### Features
+
+* **catalogue:** list Sweden Central models that are not offered yet ([#60](https://github.com/DEFRA/ai-platform-infra/issues/60)) ([55d80fc](https://github.com/DEFRA/ai-platform-infra/commit/55d80fc17b6b7f178a79cc00e1e6c327b0b79c1b))
+
 ## [0.13.2](https://github.com/DEFRA/ai-platform-infra/compare/v0.13.1...v0.13.2) (2026-11-19)
 
 
