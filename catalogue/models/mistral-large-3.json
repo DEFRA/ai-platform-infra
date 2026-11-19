@@ -1,0 +1,35 @@
+{
+  "slug": "mistral-large-3",
+  "provider": "mistral",
+  "offering": "azure-foundry",
+  "family": "mistral-large",
+  "modelName": "Mistral-Large-3",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Mistral Large 3",
+  "description": "Mistral flagship multilingual model with tool calling and image input.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

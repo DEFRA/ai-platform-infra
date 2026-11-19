@@ -1,0 +1,35 @@
+{
+  "slug": "mai-thinking-1",
+  "provider": "microsoft",
+  "offering": "azure-foundry",
+  "family": "mai",
+  "modelName": "MAI-Thinking-1",
+  "version": "2026-06-01",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "MAI-Thinking-1",
+  "description": "Microsoft reasoning model with tool calling.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

@@ -1,0 +1,35 @@
+{
+  "slug": "gpt-4-1-mini",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "gpt-4.1",
+  "modelName": "gpt-4.1-mini",
+  "version": "2025-04-14",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "GPT-4.1 mini",
+  "description": "A smaller, faster and cheaper GPT-4.1 for everyday chat and extraction.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

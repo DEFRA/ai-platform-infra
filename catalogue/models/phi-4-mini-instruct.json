@@ -1,0 +1,35 @@
+{
+  "slug": "phi-4-mini-instruct",
+  "provider": "microsoft",
+  "offering": "azure-foundry",
+  "family": "phi",
+  "modelName": "Phi-4-mini-instruct",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Phi-4 mini",
+  "description": "A very small Microsoft model for fast, low-cost text tasks.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

@@ -1,0 +1,35 @@
+{
+  "slug": "mistral-small-2503",
+  "provider": "mistral",
+  "offering": "azure-foundry",
+  "family": "mistral-small",
+  "modelName": "mistral-small-2503",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Mistral Small",
+  "description": "A small, fast Mistral model with tool calling.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

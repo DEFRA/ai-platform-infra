@@ -1,0 +1,35 @@
+{
+  "slug": "gpt-4-1",
+  "provider": "openai",
+  "offering": "azure-openai",
+  "family": "gpt-4.1",
+  "modelName": "gpt-4.1",
+  "version": "2025-04-14",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "GPT-4.1",
+  "description": "OpenAI general-purpose model with a very long context window, strong at coding and following instructions.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "chat-completions",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}

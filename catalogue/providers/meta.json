@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/provider.schema.json",
+  "id": "meta",
+  "displayName": "Meta",
+  "offerings": [
+    {
+      "id": "azure-foundry",
+      "displayName": "Meta Llama on Microsoft Foundry",
+      "hosting": {
+        "platform": "foundry",
+        "cloud": "azure"
+      },
+      "gateway": "azure-apim",
+      "terms": "https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"
+    }
+  ]
+}

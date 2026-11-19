@@ -1,0 +1,35 @@
+{
+  "slug": "claude-haiku-4-5",
+  "provider": "anthropic",
+  "offering": "azure-foundry",
+  "family": "claude",
+  "modelName": "claude-haiku-4-5",
+  "version": "1",
+  "skus": [
+    {
+      "name": "GlobalStandard"
+    }
+  ],
+  "displayName": "Claude Haiku 4.5",
+  "description": "Fast, low-cost Anthropic model for high-volume tasks.",
+  "useCases": [],
+  "tiers": [],
+  "environments": [],
+  "dataZone": "eu",
+  "regions": ["swedencentral"],
+  "apiProfile": "messages",
+  "capacityPolicy": {
+    "min": 1,
+    "max": 50,
+    "default": 5
+  },
+  "lifecycle": {
+    "status": "proposed",
+    "retirementDate": null
+  },
+  "eligibility": {
+    "eligible": false,
+    "reason": "Available in Sweden Central on Microsoft Foundry; not yet offered through the platform"
+  },
+  "links": []
+}
