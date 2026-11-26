@@ -28,8 +28,13 @@ reads. No value is interpolated: names come from the codes through `naming`. Bef
 DEV, `azure.existing_resource_group` may name a CCoE resource group made in advance; the platform and its
 state then go into it.
 
-Diagnostic settings for every platform resource, and the subscription activity log, are in one place:
-[`platform/diagnostics.tf`](../platform/diagnostics.tf).
+Diagnostic settings for every platform resource (API Management, Foundry, both Key Vaults and the workspace's own
+audit log), and the subscription activity log, are in one place:
+[`platform/diagnostics.tf`](../platform/diagnostics.tf). Application Insights has none: it is workspace-based, so
+its telemetry is already in the workspace. The same file keeps the gateway billing record (the gateway log and the LLM
+token log) for `azure.log_analytics.billing_record_retention_days` in total (design G says one year), or the workspace's
+retention if that is longer. It is unset by default: Azure creates those tables when the first log records arrive, so set
+it once they exist.
 
 | Module                                                        | Creates                                                                                                                                                                                                                                                                                         | Used by                 |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |

@@ -214,6 +214,12 @@
             },
             "subscription_activity_log": {
               "type": "boolean"
+            },
+            "billing_record_retention_days": {
+              "description": "Total days the gateway billing record (the gateway and LLM token logs) is kept; design G sets one year. Set it once the tables exist, because Azure creates them when the first log records arrive. Unset leaves the workspace's retention.",
+              "type": "integer",
+              "minimum": 30,
+              "maximum": 4383
             }
           }
         },

@@ -94,9 +94,14 @@ run "plans_the_public_minimal_platform" {
   assert {
     condition = toset(keys(azurerm_monitor_diagnostic_setting.resource)) == toset([
       "api_management", "key_vault_platform", "key_vault_tenants",
-      "foundry_uksouth", "foundry_swedencentral",
+      "foundry_uksouth", "foundry_swedencentral", "log_analytics",
     ])
-    error_message = "every platform resource sends diagnostics to the workspace"
+    error_message = "every platform resource, the workspace's own audit log included, sends diagnostics to the workspace"
+  }
+
+  assert {
+    condition     = one(azurerm_monitor_diagnostic_setting.resource["log_analytics"].enabled_log).category_group == "allLogs" && one(azurerm_monitor_diagnostic_setting.resource["log_analytics"].enabled_metric).category == "AllMetrics"
+    error_message = "the workspace sends its audit log and metrics to itself, all of them"
   }
 
   assert {
@@ -199,4 +204,210 @@ run "refuses_another_service_code" {
   }
 
   expect_failures = [var.service_code]
+}
+
+run "leaves_the_billing_record_to_the_workspace_when_no_retention_is_set" {
+  command = plan
+
+  # A fresh workspace has no gateway tables until the first log records arrive, so
+  # the retention is opt-in per environment, set once the tables exist.
+  assert {
+    condition     = length(azapi_update_resource.billing_record_retention) == 0
+    error_message = "no billing table is touched unless the environment sets billing_record_retention_days"
+  }
+}
+
+run "keeps_the_gateway_billing_record_for_the_configured_days" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 365
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  # Design G #retention: the gateway billing record is kept one year in total.
+  assert {
+    condition     = toset(keys(azapi_update_resource.billing_record_retention)) == toset(["ApiManagementGatewayLogs", "ApiManagementGatewayLlmLog"])
+    error_message = "the per-request gateway log and the LLM token log are the billing record"
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 365])
+    error_message = "each billing table keeps the configured days in total, searchable for the workspace's retention"
+  }
+
+  assert {
+    condition     = alltrue([for name, table in azapi_update_resource.billing_record_retention : table.name == name && endswith(table.type, "workspaces/tables@2022-10-01")])
+    error_message = "the setting updates the table the diagnostic setting writes to"
+  }
+}
+
+run "never_keeps_the_billing_record_for_less_than_the_workspace" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 730
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 365
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 730])
+    error_message = "a workspace that searches for 730 days keeps the billing record at least that long"
+  }
+}
+
+run "refuses_a_billing_retention_outside_what_log_analytics_keeps" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 10
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  expect_failures = [var.azure]
+}
+
+run "accepts_the_shortest_billing_retention" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 30
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 30]) && length(azapi_update_resource.billing_record_retention) == 2
+    error_message = "the 30-day edge is accepted and both billing tables keep exactly that long"
+  }
+}
+run "accepts_the_longest_billing_retention" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 4383
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 4383]) && length(azapi_update_resource.billing_record_retention) == 2
+    error_message = "the 4383-day edge is accepted and both billing tables keep exactly that long"
+  }
+}
+run "refuses_a_billing_retention_one_day_over_the_longest" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 4384
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  expect_failures = [var.azure]
 }
