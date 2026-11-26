@@ -94,9 +94,14 @@ run "plans_the_public_minimal_platform" {
   assert {
     condition = toset(keys(azurerm_monitor_diagnostic_setting.resource)) == toset([
       "api_management", "key_vault_platform", "key_vault_tenants",
-      "foundry_uksouth", "foundry_swedencentral",
+      "foundry_uksouth", "foundry_swedencentral", "log_analytics",
     ])
-    error_message = "every platform resource sends diagnostics to the workspace"
+    error_message = "every platform resource, the workspace's own audit log included, sends diagnostics to the workspace"
+  }
+
+  assert {
+    condition     = one(azurerm_monitor_diagnostic_setting.resource["log_analytics"].enabled_log).category_group == "allLogs" && one(azurerm_monitor_diagnostic_setting.resource["log_analytics"].enabled_metric).category == "AllMetrics"
+    error_message = "the workspace sends its audit log and metrics to itself, all of them"
   }
 
   assert {
