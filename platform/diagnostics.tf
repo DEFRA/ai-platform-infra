@@ -7,6 +7,8 @@ locals {
       api_management     = { id = module.apim.id, dedicated = true }
       key_vault_platform = { id = module.key_vault["platform"].id, dedicated = false }
       key_vault_tenants  = { id = module.key_vault["tenants"].id, dedicated = false }
+      # Not Application Insights: workspace-based, its telemetry is already in this workspace.
+      log_analytics = { id = module.log_analytics.workspace_id, dedicated = false }
     },
     { for region, account in module.foundry : "foundry_${region}" => { id = account.id, dedicated = false } },
   )

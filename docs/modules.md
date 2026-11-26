@@ -28,8 +28,10 @@ reads. No value is interpolated: names come from the codes through `naming`. Bef
 DEV, `azure.existing_resource_group` may name a CCoE resource group made in advance; the platform and its
 state then go into it.
 
-Diagnostic settings for every platform resource, and the subscription activity log, are in one place:
-[`platform/diagnostics.tf`](../platform/diagnostics.tf).
+Diagnostic settings for every platform resource (API Management, Foundry, both Key Vaults and the workspace's own
+audit log), and the subscription activity log, are in one place:
+[`platform/diagnostics.tf`](../platform/diagnostics.tf). Application Insights has none: it is workspace-based, so
+its telemetry is already in the workspace.
 
 | Module                                                        | Creates                                                                                                                                                                                                                                                                                         | Used by                 |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
