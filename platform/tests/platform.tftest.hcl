@@ -320,3 +320,94 @@ run "refuses_a_billing_retention_outside_what_log_analytics_keeps" {
 
   expect_failures = [var.azure]
 }
+
+run "accepts_the_shortest_billing_retention" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 30
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 30]) && length(azapi_update_resource.billing_record_retention) == 2
+    error_message = "the 30-day edge is accepted and both billing tables keep exactly that long"
+  }
+}
+run "accepts_the_longest_billing_retention" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 4383
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 4383]) && length(azapi_update_resource.billing_record_retention) == 2
+    error_message = "the 4383-day edge is accepted and both billing tables keep exactly that long"
+  }
+}
+run "refuses_a_billing_retention_one_day_over_the_longest" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 4384
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  expect_failures = [var.azure]
+}
