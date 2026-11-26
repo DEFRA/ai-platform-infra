@@ -29,6 +29,31 @@ resource "azurerm_monitor_diagnostic_setting" "resource" {
   }
 }
 
+# The gateway billing record (design G #retention): the per-request gateway log and the
+# LLM token log are kept one year in total, never less than the workspace searches for.
+# azapi_update_resource because Azure creates these built-in tables itself, so there is
+# nothing to import, and destroying this leaves the table as it is.
+locals {
+  billing_record_tables = toset(["ApiManagementGatewayLogs", "ApiManagementGatewayLlmLog"])
+  billing_record_total  = max(365, var.azure.log_analytics.retention_in_days)
+}
+
+resource "azapi_update_resource" "billing_record_retention" {
+  for_each = local.billing_record_tables
+
+  type      = "Microsoft.OperationalInsights/workspaces/tables@2022-10-01"
+  name      = each.value
+  parent_id = module.log_analytics.workspace_id
+
+  body = {
+    properties = {
+      totalRetentionInDays = local.billing_record_total
+    }
+  }
+
+  depends_on = [azurerm_monitor_diagnostic_setting.resource]
+}
+
 resource "azurerm_monitor_diagnostic_setting" "activity_log" {
   count = var.azure.log_analytics.subscription_activity_log ? 1 : 0
 

@@ -200,3 +200,53 @@ run "refuses_another_service_code" {
 
   expect_failures = [var.service_code]
 }
+run "keeps_the_gateway_billing_record_for_a_year" {
+  command = plan
+
+  # Design G #retention: the gateway billing record is kept one year in total.
+  assert {
+    condition     = toset(keys(azapi_update_resource.billing_record_retention)) == toset(["ApiManagementGatewayLogs", "ApiManagementGatewayLlmLog"])
+    error_message = "the per-request gateway log and the LLM token log are the billing record"
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 365])
+    error_message = "each billing table keeps 365 days in total, searchable for the workspace's retention"
+  }
+
+  assert {
+    condition     = alltrue([for name, table in azapi_update_resource.billing_record_retention : table.name == name && endswith(table.type, "workspaces/tables@2022-10-01")])
+    error_message = "the setting updates the table the diagnostic setting writes to"
+  }
+}
+
+run "never_keeps_the_billing_record_for_less_than_the_workspace" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days         = 730
+        daily_quota_gb            = 1
+        subscription_activity_log = true
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  assert {
+    condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 730])
+    error_message = "a workspace that searches for 730 days keeps the billing record at least that long"
+  }
+}

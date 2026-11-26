@@ -29,7 +29,8 @@ DEV, `azure.existing_resource_group` may name a CCoE resource group made in adva
 state then go into it.
 
 Diagnostic settings for every platform resource, and the subscription activity log, are in one place:
-[`platform/diagnostics.tf`](../platform/diagnostics.tf).
+[`platform/diagnostics.tf`](../platform/diagnostics.tf). The same file keeps the gateway billing record (the gateway
+log and the LLM token log) for one year in total, or the workspace's retention if that is longer.
 
 | Module                                                        | Creates                                                                                                                                                                                                                                                                                         | Used by                 |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
