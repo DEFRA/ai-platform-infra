@@ -30,7 +30,8 @@ state then go into it.
 
 Diagnostic settings for every platform resource, and the subscription activity log, are in one place:
 [`platform/diagnostics.tf`](../platform/diagnostics.tf). The same file keeps the gateway billing record (the gateway
-log and the LLM token log) for one year in total, or the workspace's retention if that is longer.
+log and the LLM token log) for `azure.log_analytics.billing_record_retention_days` in total (design G says one year), or the workspace's retention if that is longer. It is unset by default: Azure creates those tables when the
+first log records arrive, so set it once they exist.
 
 | Module                                                        | Creates                                                                                                                                                                                                                                                                                         | Used by                 |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |

@@ -200,8 +200,43 @@ run "refuses_another_service_code" {
 
   expect_failures = [var.service_code]
 }
-run "keeps_the_gateway_billing_record_for_a_year" {
+
+run "leaves_the_billing_record_to_the_workspace_when_no_retention_is_set" {
   command = plan
+
+  # A fresh workspace has no gateway tables until the first log records arrive, so
+  # the retention is opt-in per environment, set once the tables exist.
+  assert {
+    condition     = length(azapi_update_resource.billing_record_retention) == 0
+    error_message = "no billing table is touched unless the environment sets billing_record_retention_days"
+  }
+}
+
+run "keeps_the_gateway_billing_record_for_the_configured_days" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 365
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
 
   # Design G #retention: the gateway billing record is kept one year in total.
   assert {
@@ -211,7 +246,7 @@ run "keeps_the_gateway_billing_record_for_a_year" {
 
   assert {
     condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 365])
-    error_message = "each billing table keeps 365 days in total, searchable for the workspace's retention"
+    error_message = "each billing table keeps the configured days in total, searchable for the workspace's retention"
   }
 
   assert {
@@ -236,9 +271,10 @@ run "never_keeps_the_billing_record_for_less_than_the_workspace" {
       foundry   = { regions = ["uksouth", "swedencentral"] }
       key_vault = { soft_delete_retention_days = 7 }
       log_analytics = {
-        retention_in_days         = 730
-        daily_quota_gb            = 1
-        subscription_activity_log = true
+        retention_in_days             = 730
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 365
       }
       application_insights = { sampling_percentage = 100 }
       identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
@@ -249,4 +285,33 @@ run "never_keeps_the_billing_record_for_less_than_the_workspace" {
     condition     = alltrue([for table in azapi_update_resource.billing_record_retention : table.body.properties.totalRetentionInDays == 730])
     error_message = "a workspace that searches for 730 days keeps the billing record at least that long"
   }
+}
+
+run "refuses_a_billing_retention_outside_what_log_analytics_keeps" {
+  command = plan
+
+  variables {
+    azure = {
+      location         = "uksouth"
+      network          = { mode = "public-minimal" }
+      named_exceptions = []
+      apim = {
+        sku       = "Developer"
+        capacity  = 1
+        publisher = { name = "Defra AI Platform", email = "ai-platform@example.gov.uk" }
+      }
+      foundry   = { regions = ["uksouth", "swedencentral"] }
+      key_vault = { soft_delete_retention_days = 7 }
+      log_analytics = {
+        retention_in_days             = 30
+        daily_quota_gb                = 1
+        subscription_activity_log     = true
+        billing_record_retention_days = 10
+      }
+      application_insights = { sampling_percentage = 100 }
+      identities           = { portal_api_principal_object_id = "00000000-0000-0000-0000-000000000002" }
+    }
+  }
+
+  expect_failures = [var.azure]
 }

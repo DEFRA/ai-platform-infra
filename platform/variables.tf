@@ -55,9 +55,10 @@ variable "azure" {
       soft_delete_retention_days = number
     })
     log_analytics = object({
-      retention_in_days         = number
-      daily_quota_gb            = optional(number)
-      subscription_activity_log = bool
+      retention_in_days             = number
+      daily_quota_gb                = optional(number)
+      subscription_activity_log     = bool
+      billing_record_retention_days = optional(number)
     })
     application_insights = object({
       sampling_percentage = number
@@ -75,6 +76,11 @@ variable "azure" {
   validation {
     condition     = var.azure.existing_resource_group == null || can(regex("^[A-Z]{3}[A-Z0-9]{3}[A-Z]{3}RGP[0-9]{4}$", var.azure.existing_resource_group))
     error_message = "azure.existing_resource_group must be a CCoE resource group name, such as SNDAIEAIPRGP1401."
+  }
+
+  validation {
+    condition     = var.azure.log_analytics.billing_record_retention_days == null || (var.azure.log_analytics.billing_record_retention_days >= 30 && var.azure.log_analytics.billing_record_retention_days <= 4383)
+    error_message = "azure.log_analytics.billing_record_retention_days is between 30 and 4383 days (12 years, the most Log Analytics keeps), or unset."
   }
 
   validation {
